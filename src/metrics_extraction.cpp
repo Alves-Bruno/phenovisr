@@ -18,6 +18,21 @@ double get_mean_gcc_for_image(image_t *image)
   return gcc_sum / consideredPixels;
 }
 
+double get_mean_rcc_for_image(image_t *image)
+{
+  double rcc_sum = 0;
+  int consideredPixels = 0;
+  // For every pixel...
+  for (int i = 0; i < image->size; i += 3) {
+    rgb RGB = get_rgb_for_pixel(i, image);
+    if (!is_black(RGB)) {
+      rcc_sum += get_rcc_value(RGB);
+      consideredPixels++;
+    }
+  }
+  return rcc_sum / consideredPixels;
+}
+
 phenology_metrics_t *calculate_image_metrics(image_t *image, std::vector<int> unmaskedPixels) {
   // Allocate metrics struct
   phenology_metrics_t *metrics = (phenology_metrics_t*) malloc(sizeof(phenology_metrics_t));

@@ -44,3 +44,9 @@ double get_gcc_value(rgb RGB) {
     ? RGB.g / (RGB.r + RGB.g + RGB.b)
     : 0;
 }
+
+double get_rcc_value(rgb RGB) {
+  return (RGB.r + RGB.g + RGB.b) != 0
+    ? RGB.r / (RGB.r + RGB.g + RGB.b)
+    : 0;
+}
