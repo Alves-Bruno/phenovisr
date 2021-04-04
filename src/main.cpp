@@ -94,7 +94,7 @@ DataFrame phenovis_get_mean_gcc_rcc(StringVector images) {
   columnNames.push_back("Mean_Rcc");
   
 
-  NumericMatrix matrix(images.size(), 4);
+  NumericMatrix matrix(images.size(), 5);
 
   // names is a vector to keep image names
   std::vector<std::string> names;
