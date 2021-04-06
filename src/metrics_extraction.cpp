@@ -37,9 +37,9 @@ std::vector<double> get_mean_all_metrics_for_image(image_t *image)
   }
 
   std::vector<double> mean_values;
-  mean_values.push_back(gcc_sum / considered_pixels);
-  mean_values.push_back(rcc_sum / considered_pixels);
-  mean_values.push_back(exg_sum / considered_pixels);
+  mean_values.push_back(gcc_sum / consideredPixels);
+  mean_values.push_back(rcc_sum / consideredPixels);
+  mean_values.push_back(exg_sum / consideredPixels);
 
   return mean_values;
 }
