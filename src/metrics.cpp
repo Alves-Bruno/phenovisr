@@ -51,6 +51,12 @@ double get_rcc_value(rgb RGB) {
     : 0;
 }
 
+double get_bcc_value(rgb RGB) {
+  return (RGB.r + RGB.g + RGB.b) != 0
+    ? RGB.b / (RGB.r + RGB.g + RGB.b)
+    : 0;
+}
+
 double get_exg_value(rgb RGB) {
   return (2.0 * RGB.g - (RGB.r + RGB.b));
 }

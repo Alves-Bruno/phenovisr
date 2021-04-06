@@ -92,10 +92,11 @@ DataFrame phenovis_get_mean_all_metrics(StringVector images) {
   columnNames.push_back("Unmasked_Pixels");
   columnNames.push_back("Mean_Gcc");
   columnNames.push_back("Mean_Rcc");
+  columnNames.push_back("Mean_Bcc");
   columnNames.push_back("Mean_Exg");
   
 
-  NumericMatrix matrix(images.size(), 6);
+  NumericMatrix matrix(images.size(), 7);
 
   // names is a vector to keep image names
   std::vector<std::string> names;
@@ -109,7 +110,7 @@ DataFrame phenovis_get_mean_all_metrics(StringVector images) {
       considered_pixels = apply_mask(image, global_mask);
     }
 
-    // Calculate the mean GCC, RCC, EXG
+    // Calculate the mean GCC, RCC, BCC, EXG
     std::vector<double> mean_values = get_mean_all_metrics_for_image(image);
 
     // Push back the image name (to aligh to this row)
@@ -118,9 +119,10 @@ DataFrame phenovis_get_mean_all_metrics(StringVector images) {
     row.push_back(image->width);
     row.push_back(image->height);
     row.push_back(considered_pixels);
-    row.push_back(mean_values[0]); // RCC
-    row.push_back(mean_values[1]); // GCC
-    row.push_back(mean_values[2]); // EXG
+    row.push_back(mean_values[0]); // GCC
+    row.push_back(mean_values[1]); // RCC
+    row.push_back(mean_values[2]); // BCC
+    row.push_back(mean_values[3]); // EXG
 
     matrix.row(row_number) = row;
     row_number++;

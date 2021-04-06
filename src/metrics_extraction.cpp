@@ -23,6 +23,7 @@ std::vector<double> get_mean_all_metrics_for_image(image_t *image)
 {
   double gcc_sum = 0;
   double rcc_sum = 0;
+  double bcc_sum = 0;
   double exg_sum = 0;
   int consideredPixels = 0;
   // For every pixel...
@@ -31,6 +32,7 @@ std::vector<double> get_mean_all_metrics_for_image(image_t *image)
     if (!is_black(RGB)) {
       gcc_sum += get_gcc_value(RGB);
       rcc_sum += get_rcc_value(RGB);
+      bcc_sum += get_bcc_value(RGB);
       exg_sum += get_exg_value(RGB);
       consideredPixels++;
     }
@@ -39,6 +41,7 @@ std::vector<double> get_mean_all_metrics_for_image(image_t *image)
   std::vector<double> mean_values;
   mean_values.push_back(gcc_sum / consideredPixels);
   mean_values.push_back(rcc_sum / consideredPixels);
+  mean_values.push_back(bcc_sum / consideredPixels);
   mean_values.push_back(exg_sum / consideredPixels);
 
   return mean_values;
