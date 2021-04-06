@@ -50,3 +50,7 @@ double get_rcc_value(rgb RGB) {
     ? RGB.r / (RGB.r + RGB.g + RGB.b)
     : 0;
 }
+
+double get_exg_value(rgb RGB) {
+  return (2.0 * RGB.g - (RGB.r + RGB.b));
+}

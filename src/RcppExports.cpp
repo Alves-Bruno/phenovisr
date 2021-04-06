@@ -36,14 +36,14 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// phenovis_get_mean_gcc_rcc
-DataFrame phenovis_get_mean_gcc_rcc(StringVector images);
-RcppExport SEXP _phenovisr_phenovis_get_mean_gcc_rcc(SEXP imagesSEXP) {
+// phenovis_get_mean_all_metrics
+DataFrame phenovis_get_mean_all_metrics(StringVector images);
+RcppExport SEXP _phenovisr_phenovis_get_mean_all_metrics(SEXP imagesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
-    rcpp_result_gen = Rcpp::wrap(phenovis_get_mean_gcc_rcc(images));
+    rcpp_result_gen = Rcpp::wrap(phenovis_get_mean_all_metrics(images));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -75,7 +75,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_phenovisr_phenovis_read_mask", (DL_FUNC) &_phenovisr_phenovis_read_mask, 1},
     {"_phenovisr_phenovis_read_masks", (DL_FUNC) &_phenovisr_phenovis_read_masks, 1},
     {"_phenovisr_phenovis_get_mean_gcc", (DL_FUNC) &_phenovisr_phenovis_get_mean_gcc, 1},
-    {"_phenovisr_phenovis_get_mean_gcc_rcc", (DL_FUNC) &_phenovisr_phenovis_get_mean_gcc_rcc, 1},
+    {"_phenovisr_phenovis_get_mean_all_metrics", (DL_FUNC) &_phenovisr_phenovis_get_mean_all_metrics, 1},
     {"_phenovisr_phenovis_get_metrics", (DL_FUNC) &_phenovisr_phenovis_get_metrics, 1},
     {"_phenovisr_phenovis_multimask_get_metrics", (DL_FUNC) &_phenovisr_phenovis_multimask_get_metrics, 2},
     {NULL, NULL, 0}

@@ -85,16 +85,17 @@ DataFrame phenovis_get_mean_gcc(StringVector images) {
 }
 
 // [[Rcpp::export]]
-DataFrame phenovis_get_mean_gcc_rcc(StringVector images) {
+DataFrame phenovis_get_mean_all_metrics(StringVector images) {
   CharacterVector columnNames;
   columnNames.push_back("Width");
   columnNames.push_back("Height");
   columnNames.push_back("Unmasked_Pixels");
   columnNames.push_back("Mean_Gcc");
   columnNames.push_back("Mean_Rcc");
+  columnNames.push_back("Mean_Exg");
   
 
-  NumericMatrix matrix(images.size(), 5);
+  NumericMatrix matrix(images.size(), 6);
 
   // names is a vector to keep image names
   std::vector<std::string> names;
@@ -108,10 +109,8 @@ DataFrame phenovis_get_mean_gcc_rcc(StringVector images) {
       considered_pixels = apply_mask(image, global_mask);
     }
 
-    // Calculate the mean GCC
-    double mean_gcc = get_mean_gcc_for_image(image);
-    // Calculate the mean RCC
-    double mean_rcc = get_mean_rcc_for_image(image);
+    // Calculate the mean GCC, RCC, EXG
+    std::vector<double> mean_values = get_mean_all_metrics_for_image(image);
 
     // Push back the image name (to aligh to this row)
     names.push_back(std::string(images(i)));
@@ -119,8 +118,9 @@ DataFrame phenovis_get_mean_gcc_rcc(StringVector images) {
     row.push_back(image->width);
     row.push_back(image->height);
     row.push_back(considered_pixels);
-    row.push_back(mean_gcc);
-    row.push_back(mean_rcc);
+    row.push_back(mean_values[0]); // RCC
+    row.push_back(mean_values[1]); // GCC
+    row.push_back(mean_values[2]); // EXG
 
     matrix.row(row_number) = row;
     row_number++;

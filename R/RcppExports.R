@@ -13,8 +13,8 @@ phenovis_get_mean_gcc <- function(images) {
     .Call(`_phenovisr_phenovis_get_mean_gcc`, images)
 }
 
-phenovis_get_mean_gcc_rcc <- function(images) {
-    .Call(`_phenovisr_phenovis_get_mean_gcc_rcc`, images)
+phenovis_get_mean_all_metrics <- function(images) {
+    .Call(`_phenovisr_phenovis_get_mean_all_metrics`, images)
 }
 
 phenovis_get_metrics <- function(images) {

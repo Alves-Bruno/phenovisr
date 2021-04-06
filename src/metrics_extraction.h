@@ -20,7 +20,7 @@ typedef struct phenology_metrics {
 
 phenology_metrics_t *calculate_image_metrics(image_t *image, std::vector<int> unmaskedPixels);
 double get_mean_gcc_for_image(image_t *image);
-double get_mean_rcc_for_image(image_t *image);
+std::vector<double> get_mean_all_metrics_for_image(image_t *image);
 
 
 #endif

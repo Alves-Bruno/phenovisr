@@ -18,19 +18,30 @@ double get_mean_gcc_for_image(image_t *image)
   return gcc_sum / consideredPixels;
 }
 
-double get_mean_rcc_for_image(image_t *image)
+// Calculate and return gcc, rcc, ExG
+std::vector<double> get_mean_all_metrics_for_image(image_t *image)
 {
+  double gcc_sum = 0;
   double rcc_sum = 0;
+  double exg_sum = 0;
   int consideredPixels = 0;
   // For every pixel...
   for (int i = 0; i < image->size; i += 3) {
     rgb RGB = get_rgb_for_pixel(i, image);
     if (!is_black(RGB)) {
+      gcc_sum += get_gcc_value(RGB);
       rcc_sum += get_rcc_value(RGB);
+      exg_sum += get_exg_value(RGB);
       consideredPixels++;
     }
   }
-  return rcc_sum / consideredPixels;
+
+  std::vector<double> mean_values;
+  mean.values.push_back(gcc_sum / considered_pixels);
+  mean.values.push_back(rcc_sum / considered_pixels);
+  mean.values.push_back(exg_sum / considered_pixels);
+
+  return mean_values;
 }
 
 phenology_metrics_t *calculate_image_metrics(image_t *image, std::vector<int> unmaskedPixels) {
