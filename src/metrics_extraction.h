@@ -1,6 +1,7 @@
 #ifndef __METRICS_EXTRACTION_H
 #define __METRICS_EXTRACTION_H
 
+#include <algorithm> 
 #include <vector>
 #include "jpeg_image.h"
 #include "metrics.h"
@@ -21,6 +22,6 @@ typedef struct phenology_metrics {
 phenology_metrics_t *calculate_image_metrics(image_t *image, std::vector<int> unmaskedPixels);
 double get_mean_gcc_for_image(image_t *image);
 std::vector<double> get_mean_all_metrics_for_image(image_t *image);
-
+std::vector<std::vector<double>> get_mean_all_metrics_pixels_for_image(image_t *image);
 
 #endif

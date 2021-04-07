@@ -85,6 +85,56 @@ DataFrame phenovis_get_mean_gcc(StringVector images) {
 }
 
 // [[Rcpp::export]]
+DataFrame phenovis_get_all_metrics_pixels(StringVector images) {
+
+  StringVector ImageNames;
+  NumericVector Pixel;
+  NumericVector Gcc;
+  NumericVector Rcc;
+  NumericVector Bcc;
+  NumericVector Exg;
+
+  int i = 0;
+  for (i = 0; i < images.size(); i++) {
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+    // Calculate the mean GCC, RCC, BCC, EXG
+    std::vector<std::vector<double>> values = get_mean_all_metrics_pixels_for_image(image);
+
+    for(int pixel = 0; pixel < values[0].size(); pixel++ ){
+    // for(int pixel = 0; pixel < 11; pixel++ ){
+      
+      ImageNames.push_back(std::string(images(i)));
+      Pixel.push_back(pixel);
+      Gcc.push_back(values[0][pixel]); // GCC
+      Rcc.push_back(values[1][pixel]); // RCC
+      Bcc.push_back(values[2][pixel]); // BCC
+      Exg.push_back(values[3][pixel]); // EXG
+
+    }
+
+    //Free the image data
+    free(image->image);
+    free(image);
+  }
+
+  DataFrame df = DataFrame::create( Named("Picture.Path") = ImageNames,         // simple assign
+                                    Named("Pixel") = Pixel,
+                                    Named("Gcc") = Gcc,
+                                    Named("Rcc") = Rcc,
+                                    Named("Bcc") = Bcc,
+                                    Named("Exg") = Exg
+                                  ); // using clone()
+
+  return(df);
+}
+
+// [[Rcpp::export]]
 DataFrame phenovis_get_mean_all_metrics(StringVector images) {
   CharacterVector columnNames;
   columnNames.push_back("Width");
@@ -140,6 +190,7 @@ DataFrame phenovis_get_mean_all_metrics(StringVector images) {
   Function asDF("as.data.frame");
   return asDF(ret);
 }
+
 // [[Rcpp::export]]
 DataFrame phenovis_get_metrics(StringVector images) {
   CharacterVector columnNames;
