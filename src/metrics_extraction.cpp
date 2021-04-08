@@ -19,31 +19,20 @@ double get_mean_gcc_for_image(image_t *image)
 }
 
 // Calculate and return gcc, rcc, ExG for every pixel
-std::vector<std::vector<double>> get_mean_all_metrics_pixels_for_image(image_t *image)
+void get_mean_all_metrics_pixels_for_image(image_t *image, std::vector<double> &values)
 {
-  std::vector<double> gcc_values;
-  std::vector<double> rcc_values;
-  std::vector<double> bcc_values;
-  std::vector<double> exg_values;
   
   // For every pixel...
   for (int i = 0; i < image->size; i += 3) {
     rgb RGB = get_rgb_for_pixel(i, image);
     if (!is_black(RGB)) {
-      gcc_values.push_back(get_gcc_value(RGB));
-      rcc_values.push_back(get_rcc_value(RGB));
-      bcc_values.push_back(get_bcc_value(RGB));
-      exg_values.push_back(get_exg_value(RGB));
+      values.push_back(get_gcc_value(RGB));
+      values.push_back(get_rcc_value(RGB));
+      values.push_back(get_bcc_value(RGB));
+      values.push_back(get_exg_value(RGB));
     }
   }
 
-  std::vector<std::vector<double>> values_all_pixels;
-  values_all_pixels.push_back( gcc_values );
-  values_all_pixels.push_back( rcc_values );
-  values_all_pixels.push_back( bcc_values );
-  values_all_pixels.push_back( exg_values );
-
-  return values_all_pixels;
 }
 
 // Calculate and return gcc, rcc, ExG

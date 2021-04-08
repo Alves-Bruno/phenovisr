@@ -104,17 +104,24 @@ DataFrame phenovis_get_all_metrics_pixels(StringVector images) {
     }
 
     // Calculate the mean GCC, RCC, BCC, EXG
-    std::vector<std::vector<double>> values = get_mean_all_metrics_pixels_for_image(image);
+    std::vector<double> values;
+    get_mean_all_metrics_pixels_for_image(image, values);
 
-    for(int pixel = 0; pixel < values[0].size(); pixel++ ){
-    // for(int pixel = 0; pixel < 11; pixel++ ){
+    std::cout << "- Calculation Done -" << std::endl;
+    // std::cout << values << std::endl;
+
+    int pixel_id = 0;
+    for(int pixel = 0; pixel < (values.size() / 4); pixel++ ){
+    // for(int pixel = 0; pixel < 2; pixel++ ){
       
       ImageNames.push_back(std::string(images(i)));
-      Pixel.push_back(pixel);
-      Gcc.push_back(values[0][pixel]); // GCC
-      Rcc.push_back(values[1][pixel]); // RCC
-      Bcc.push_back(values[2][pixel]); // BCC
-      Exg.push_back(values[3][pixel]); // EXG
+
+      Pixel.push_back(pixel_id);
+      pixel_id++;
+      Gcc.push_back(values[ 0 + (pixel * 4) ]); // GCC
+      Rcc.push_back(values[ 1 + (pixel * 4) ]); // RCC
+      Bcc.push_back(values[ 2 + (pixel * 4) ]); // BCC
+      Exg.push_back(values[ 3 + (pixel * 4) ]); // EXG
 
     }
 
