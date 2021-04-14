@@ -221,7 +221,7 @@ DataFrame phenovis_get_moving_window(StringVector images) {
 
   // Create the resulting data frame
   DataFrame ret(matrix);
-  ret.insert(ret.begin(), std::string(images(0)) );
+  ret.insert(ret.begin(), std::string(images(1)) );
   columnNames.push_front("Picture.Path");
   ret.attr("names") = columnNames;
   Function asDF("as.data.frame");
