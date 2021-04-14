@@ -34,6 +34,58 @@ void phenovis_read_masks(StringVector maskNames) {
 }
 
 // [[Rcpp::export]]
+DataFrame phenovis_get_mean_L_star(StringVector images) {
+  CharacterVector columnNames;
+  columnNames.push_back("Width");
+  columnNames.push_back("Height");
+  columnNames.push_back("Unmasked_Pixels");
+  columnNames.push_back("L_Star");
+
+
+  NumericMatrix matrix(images.size(), 4);
+
+  // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+    // Calculate the L_star
+    double L_star_mean = get_L_star_for_image(image);
+
+    // Push back the image name (to align to this row)
+    names.push_back(std::string(images(i)));
+    NumericVector row;
+    row.push_back(image->width);
+    row.push_back(image->height);
+    row.push_back(considered_pixels);
+    row.push_back(L_star_mean);
+
+    matrix.row(row_number) = row;
+    row_number++;
+
+    //Free the image data
+    free(image->image);
+    free(image);
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+}
+
+
+// [[Rcpp::export]]
 DataFrame phenovis_get_mean_gcc(StringVector images) {
   CharacterVector columnNames;
   columnNames.push_back("Width");
@@ -84,18 +136,50 @@ DataFrame phenovis_get_mean_gcc(StringVector images) {
   return asDF(ret);
 }
 
+double calc_p_90(std::vector<double> &vec){
+  // Sort values 
+  std::sort(vec.begin(), vec.end());
+
+  int index_p90 = 0.9 * vec.size(); 
+  return vec[index_p90];
+}
+
+
+double calc_mean(std::vector<double> &vec){
+
+  double sum = 0;
+  for(int i; i < vec.size(); i++){
+    sum += vec[i];
+  }
+  return sum / vec.size();
+}
+
 // [[Rcpp::export]]
-DataFrame phenovis_get_all_metrics_pixels(StringVector images) {
+DataFrame phenovis_get_moving_window(StringVector images) {
 
-  StringVector ImageNames;
-  NumericVector Pixel;
-  NumericVector Gcc;
-  NumericVector Rcc;
-  NumericVector Bcc;
-  NumericVector Exg;
+  CharacterVector columnNames;
+  columnNames.push_back("P90_Gcc");
+  columnNames.push_back("P90_Rcc");
+  columnNames.push_back("P90_Bcc");
+  columnNames.push_back("P90_Exg");
+  columnNames.push_back("P90_Lstar");
+  columnNames.push_back("Mean_Gcc");
+  columnNames.push_back("Mean_Rcc");
+  columnNames.push_back("Mean_Bcc");
+  columnNames.push_back("Mean_Exg");
+  columnNames.push_back("Mean_Lstar");
 
-  int i = 0;
-  for (i = 0; i < images.size(); i++) {
+  NumericMatrix matrix(1, 10);
+
+  if(images.size() != 3){
+    printf("Error. Invalid number of images, must be 3: previous, current, next.");
+    return DataFrame::create();
+  }
+ 
+  // image_t *images[3];
+  std::vector<image_t*> images_vec;
+ 
+  for (int i = 0; i < 3; i++) {
     // Load the image and apply mask
     image_t *image = load_jpeg_image(std::string(images(i)).c_str());
     int considered_pixels = image->width * image->height;
@@ -103,42 +187,45 @@ DataFrame phenovis_get_all_metrics_pixels(StringVector images) {
       considered_pixels = apply_mask(image, global_mask);
     }
 
-    // Calculate the mean GCC, RCC, BCC, EXG
-    std::vector<double> values;
-    get_mean_all_metrics_pixels_for_image(image, values);
-
-    std::cout << "- Calculation Done -" << std::endl;
-    // std::cout << values << std::endl;
-
-    int pixel_id = 0;
-    for(int pixel = 0; pixel < (values.size() / 4); pixel++ ){
-    // for(int pixel = 0; pixel < 2; pixel++ ){
-      
-      ImageNames.push_back(std::string(images(i)));
-
-      Pixel.push_back(pixel_id);
-      pixel_id++;
-      Gcc.push_back(values[ 0 + (pixel * 4) ]); // GCC
-      Rcc.push_back(values[ 1 + (pixel * 4) ]); // RCC
-      Bcc.push_back(values[ 2 + (pixel * 4) ]); // BCC
-      Exg.push_back(values[ 3 + (pixel * 4) ]); // EXG
-
-    }
-
-    //Free the image data
-    free(image->image);
-    free(image);
+    images_vec.push_back(image);
   }
 
-  DataFrame df = DataFrame::create( Named("Picture.Path") = ImageNames,         // simple assign
-                                    Named("Pixel") = Pixel,
-                                    Named("Gcc") = Gcc,
-                                    Named("Rcc") = Rcc,
-                                    Named("Bcc") = Bcc,
-                                    Named("Exg") = Exg
-                                  ); // using clone()
+  // Calculate the GCC, RCC, BCC, EXG values for pixel
+  std::vector<double> GCC, RCC, BCC, EXG, LSTAR;
+  moving_window_metrics_t metrics = {&GCC, &RCC, &BCC, &EXG, &LSTAR};
+  get_metrics_moving_window(images_vec[0], images_vec[1], images_vec[2], metrics);
 
-  return(df);
+  NumericVector row;
+
+  // Calculate p90
+  row.push_back(calc_p_90(GCC));
+  row.push_back(calc_p_90(RCC));
+  row.push_back(calc_p_90(BCC));
+  row.push_back(calc_p_90(EXG));
+  row.push_back(calc_p_90(LSTAR));
+  
+  // Calculate mean
+  row.push_back(calc_mean(GCC));
+  row.push_back(calc_mean(RCC));
+  row.push_back(calc_mean(BCC));
+  row.push_back(calc_mean(EXG));
+  row.push_back(calc_mean(LSTAR));
+
+  matrix.row(0) = row;
+
+  //Free the image data
+  for (int i = 0; i < 3; i++) {
+    free(images_vec[i]->image);
+    free(images_vec[i]);
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), std::string(images(0)) );
+  columnNames.push_front("Picture.Path");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
 }
 
 // [[Rcpp::export]]

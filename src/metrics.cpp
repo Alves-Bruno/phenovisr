@@ -60,3 +60,34 @@ double get_bcc_value(rgb RGB) {
 double get_exg_value(rgb RGB) {
   return (2.0 * RGB.g - (RGB.r + RGB.b));
 }
+
+
+double rgb_to_linear(double colorChannel){
+
+  if( colorChannel <= 0.04045){
+    return colorChannel / 19.920;
+  } else {
+    return pow( (( colorChannel + 0.055 ) / 1.055), 2.4 );
+  }
+
+}
+
+double get_L_star_value(rgb RGB){
+
+  // Convert gamma encoded RGB to a linear value:
+  rgb l_RGB = {0.00, 0.00, 0.00};
+  l_RGB.r = rgb_to_linear(RGB.r);
+  l_RGB.g = rgb_to_linear(RGB.g);
+  l_RGB.b = rgb_to_linear(RGB.b);
+
+  // Luminace ( Y )
+  double Y = ( (0.2126*l_RGB.r) + (0.7152*l_RGB.g) + (0.0722*l_RGB.b));
+
+  // L_star (Perceived Lightness)
+  if ( Y <= (216.0000/24389.0000) ) {       // The CIE standard states 0.008856 but 216/24389 is the intent for 0.008856451679036
+    return Y * (24389.0000/27.0000);  // The CIE standard states 903.3, but 24389/27 is the intent, making 903.296296296296296
+  } else {
+    return pow(Y,(1.0000/3.0000)) * (116.0000 - 16.0000);
+  }
+  
+}

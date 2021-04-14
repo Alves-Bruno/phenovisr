@@ -3,6 +3,22 @@
 
 #define MODE_SUBINS 10
 
+double get_L_star_for_image(image_t *image){
+
+  double L_star_sum = 0;
+  int consideredPixels = 0;
+  // For every pixel...
+  for (int i = 0; i < image->size; i += 3) {
+    rgb RGB = get_rgb_for_pixel(i, image);
+    if (!is_black(RGB)) {
+      L_star_sum += get_L_star_value(RGB);
+      consideredPixels++;
+    }
+  }
+
+  return L_star_sum / consideredPixels;
+}
+
 double get_mean_gcc_for_image(image_t *image)
 {
   double gcc_sum = 0;
@@ -19,18 +35,40 @@ double get_mean_gcc_for_image(image_t *image)
 }
 
 // Calculate and return gcc, rcc, ExG for every pixel
-void get_mean_all_metrics_pixels_for_image(image_t *image, std::vector<double> &values)
+void get_metrics_moving_window(image_t *img1, image_t *img2, image_t *img3, moving_window_metrics_t &values)
 {
   
   // For every pixel...
-  for (int i = 0; i < image->size; i += 3) {
-    rgb RGB = get_rgb_for_pixel(i, image);
-    if (!is_black(RGB)) {
-      values.push_back(get_gcc_value(RGB));
-      values.push_back(get_rcc_value(RGB));
-      values.push_back(get_bcc_value(RGB));
-      values.push_back(get_exg_value(RGB));
+  for (int i = 0; i < img2->size; i += 3) {
+
+    rgb RGB1 = get_rgb_for_pixel(i, img1);
+    rgb RGB2 = get_rgb_for_pixel(i, img2);
+    rgb RGB3 = get_rgb_for_pixel(i, img3);
+    
+    if (!is_black(RGB1)) {
+      values.Gcc->push_back(get_gcc_value(RGB1));
+      values.Rcc->push_back(get_rcc_value(RGB1));
+      values.Bcc->push_back(get_bcc_value(RGB1));
+      values.Exg->push_back(get_exg_value(RGB1));
+      values.Lstar->push_back(get_L_star_value(RGB1));
     }
+
+    if (!is_black(RGB2)) {
+      values.Gcc->push_back(get_gcc_value(RGB2));
+      values.Rcc->push_back(get_rcc_value(RGB2));
+      values.Bcc->push_back(get_bcc_value(RGB2));
+      values.Exg->push_back(get_exg_value(RGB2));
+      values.Lstar->push_back(get_L_star_value(RGB2));
+    }
+
+    if (!is_black(RGB3)) {
+      values.Gcc->push_back(get_gcc_value(RGB3));
+      values.Rcc->push_back(get_rcc_value(RGB3));
+      values.Bcc->push_back(get_bcc_value(RGB3));
+      values.Exg->push_back(get_exg_value(RGB3));
+      values.Lstar->push_back(get_L_star_value(RGB3));
+    }
+
   }
 
 }

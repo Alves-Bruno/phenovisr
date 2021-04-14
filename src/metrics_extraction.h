@@ -19,9 +19,20 @@ typedef struct phenology_metrics {
   rgb *GccMeanColor;      // The mean RGB colors for the Gcc histogram
 } phenology_metrics_t;
 
+typedef struct moving_window_metrics {
+
+  std::vector<double> *Gcc;
+  std::vector<double> *Rcc;
+  std::vector<double> *Bcc;
+  std::vector<double> *Exg;
+  std::vector<double> *Lstar;
+
+} moving_window_metrics_t;
+
 phenology_metrics_t *calculate_image_metrics(image_t *image, std::vector<int> unmaskedPixels);
 double get_mean_gcc_for_image(image_t *image);
 std::vector<double> get_mean_all_metrics_for_image(image_t *image);
-void get_mean_all_metrics_pixels_for_image(image_t *image, std::vector<double> &values);
+void get_metrics_moving_window(image_t *img1, image_t *img2, image_t *img3, moving_window_metrics_t &values);
+double get_L_star_for_image(image_t *image);
 
 #endif
