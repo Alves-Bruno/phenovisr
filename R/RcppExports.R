@@ -9,12 +9,16 @@ phenovis_read_masks <- function(maskNames) {
     invisible(.Call(`_phenovisr_phenovis_read_masks`, maskNames))
 }
 
+phenovis_get_mean_L_star <- function(images) {
+    .Call(`_phenovisr_phenovis_get_mean_L_star`, images)
+}
+
 phenovis_get_mean_gcc <- function(images) {
     .Call(`_phenovisr_phenovis_get_mean_gcc`, images)
 }
 
-phenovis_get_all_metrics_pixels <- function(images) {
-    .Call(`_phenovisr_phenovis_get_all_metrics_pixels`, images)
+phenovis_get_moving_window <- function(images) {
+    .Call(`_phenovisr_phenovis_get_moving_window`, images)
 }
 
 phenovis_get_mean_all_metrics <- function(images) {
