@@ -7,6 +7,7 @@
 #include "metrics_extraction.h"
 // #include <boost/math/statistics/univariate_statistics.hpp>
 #include <boost/math/tools/univariate_statistics.hpp>
+#include <boost/math/tools/bivariate_statistics.hpp>
 
 using namespace Rcpp;
 
@@ -318,8 +319,14 @@ DataFrame phenovis_get_boost_stats(std::string in_image) {
       columnNames.push_back(metric_name + "_" + stat_name);
     }
   }
+  columnNames.push_back("corr_L_star_Gcc");
+  columnNames.push_back("corr_L_star_Rcc");
+  columnNames.push_back("corr_L_star_Bcc");
+  columnNames.push_back("corr_L_star_Exg");
+  //columnNames.push_back("corr_L_star_L_star");
+
   
-  NumericMatrix matrix(1, metrics.size() * statistics.size() );
+  NumericMatrix matrix(1, 4 + (metrics.size() * statistics.size()) );
  
   // Load the image and apply mask
   image_t *image = load_jpeg_image(in_image.c_str());
@@ -414,6 +421,13 @@ DataFrame phenovis_get_boost_stats(std::string in_image) {
   for(auto p_cur : percentiles){
     row.push_back( p_cur );
   }
+
+  // Correlation between metrics
+  row.push_back(boost::math::tools::correlation_coefficient(*LSTAR, *GCC));
+  row.push_back(boost::math::tools::correlation_coefficient(*LSTAR, *RCC));
+  row.push_back(boost::math::tools::correlation_coefficient(*LSTAR, *BCC));
+  row.push_back(boost::math::tools::correlation_coefficient(*LSTAR, *EXG));
+  //row.push_back(boost::math::tools::correlation_coefficient(*LSTAR, *LSTAR));
 
   matrix.row(0) = row;
 
