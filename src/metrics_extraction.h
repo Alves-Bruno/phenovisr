@@ -32,6 +32,7 @@ typedef struct moving_window_metrics {
 phenology_metrics_t *calculate_image_metrics(image_t *image, std::vector<int> unmaskedPixels);
 double get_mean_gcc_for_image(image_t *image);
 std::vector<double> get_mean_all_metrics_for_image(image_t *image);
+void get_metrics_for_image(image_t *img, moving_window_metrics_t &values);
 void get_metrics_moving_window(image_t *img1, image_t *img2, image_t *img3, moving_window_metrics_t &values);
 double get_L_star_for_image(image_t *image);
 

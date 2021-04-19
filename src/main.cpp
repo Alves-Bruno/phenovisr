@@ -5,6 +5,8 @@
 #include <string>
 #include "jpeg_image.h"
 #include "metrics_extraction.h"
+// #include <boost/math/statistics/univariate_statistics.hpp>
+#include <boost/math/tools/univariate_statistics.hpp>
 
 using namespace Rcpp;
 
@@ -134,6 +136,19 @@ DataFrame phenovis_get_mean_gcc(StringVector images) {
   ret.attr("names") = columnNames;
   Function asDF("as.data.frame");
   return asDF(ret);
+}
+
+// Vec needs to be sorted
+std::vector<double> calc_nth_percentile(std::vector<double> &vec, std::vector<int> nth){
+
+  std::vector<double> percentiles;
+  
+  for(int i = 0; i < nth.size(); i++){
+    int index = (nth[i] / 100.00) * vec.size();
+    percentiles.push_back( vec[index] );
+  }
+
+  return percentiles;
 }
 
 double calc_p_90(std::vector<double> &vec){
@@ -279,6 +294,136 @@ DataFrame phenovis_get_mean_all_metrics(StringVector images) {
   // Create the resulting data frame
   DataFrame ret(matrix);
   ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+}
+
+// [[Rcpp::export]]
+DataFrame phenovis_get_boost_stats(std::string in_image) {
+
+  std::vector<int> p_to_calc = {10, 20, 25, 30, 40, 50, 60, 70, 75, 80, 90};
+  
+  std::vector<std::string> metrics = {"Gcc", "Rcc", "Bcc", "ExG", "L_star"};
+  std::vector<std::string> statistics = {"mean", "median", "std_dev", "mad", "max", "min"};
+  
+  for(auto percent : p_to_calc){
+    statistics.push_back( "p" + std::to_string(percent) );
+  }
+
+  CharacterVector columnNames;
+  for(auto metric_name : metrics){
+    for(auto stat_name : statistics){
+      columnNames.push_back(metric_name + "_" + stat_name);
+    }
+  }
+  
+  NumericMatrix matrix(1, metrics.size() * statistics.size() );
+ 
+  // Load the image and apply mask
+  image_t *image = load_jpeg_image(in_image.c_str());
+  int considered_pixels = image->width * image->height;
+  if (global_mask) {
+    considered_pixels = apply_mask(image, global_mask);
+  }
+
+  // Calculate the GCC, RCC, BCC, EXG values for pixel
+  std::vector<double>* GCC = new std::vector<double>;
+  std::vector<double>* RCC = new std::vector<double>;
+  std::vector<double>* BCC = new std::vector<double>;
+  std::vector<double>* EXG = new std::vector<double>;
+  std::vector<double>* LSTAR = new std::vector<double>;
+
+  moving_window_metrics_t metrics_ = {GCC, RCC, BCC, EXG, LSTAR};
+  get_metrics_for_image(image, metrics_);
+
+  // double mu = boost::math::tools::mean(v);
+  // double m = boost::math::tools::median(v.begin(), v.end());
+  // double mad = boost::math::tools::median_absolute_deviation(v);
+  // double std_deviation = sqrt( boost::math::tools::sample_variance(v) );
+  // std::vector<double> percentiles = calc_nth_percentile(v, p_to_calc);
+
+  std::vector<double> percentiles;
+  NumericVector row;
+
+  // GCC metrics
+  row.push_back( boost::math::tools::mean( *GCC ));
+  row.push_back( boost::math::tools::median( *GCC ));
+  row.push_back( sqrt( boost::math::tools::sample_variance( *GCC ) ) );
+  row.push_back( boost::math::tools::median_absolute_deviation( *GCC ));
+  std::sort( GCC->begin(), GCC->end() );
+  percentiles = calc_nth_percentile(*GCC, p_to_calc);
+  row.push_back( *(GCC->end() - 1) ); // Max
+  row.push_back( *(GCC->begin()) ); // Min
+  for(auto p_cur : percentiles){
+    row.push_back( p_cur );
+  }  
+  
+  // RCC metrics
+  row.push_back( boost::math::tools::mean(RCC->begin(), RCC->end()) );
+  row.push_back( boost::math::tools::median(RCC->begin(), RCC->end()) );
+  row.push_back( sqrt(boost::math::tools::sample_variance(RCC->begin(), RCC->end())) );
+  row.push_back( boost::math::tools::median_absolute_deviation(RCC->begin(), RCC->end()) );
+  std::sort( RCC->begin(), RCC->end() );
+  percentiles = calc_nth_percentile(*RCC, p_to_calc);
+  row.push_back( *(RCC->end()-1) ); // Max
+  row.push_back( *(RCC->begin()) ); // Min
+  for(auto p_cur : percentiles){
+    row.push_back( p_cur );
+  }
+
+  // BCC metrics
+  row.push_back( boost::math::tools::mean(BCC->begin(), BCC->end()) );
+  row.push_back( boost::math::tools::median(BCC->begin(), BCC->end()) );
+  row.push_back( sqrt(boost::math::tools::sample_variance(BCC->begin(), BCC->end())) );
+  row.push_back( boost::math::tools::median_absolute_deviation(BCC->begin(), BCC->end()) );
+  std::sort( BCC->begin(), BCC->end() );
+  percentiles = calc_nth_percentile(*BCC, p_to_calc);
+  row.push_back( *(BCC->end()-1) ); // Max
+  row.push_back( *(BCC->begin()) ); // Min
+  for(auto p_cur : percentiles){
+    row.push_back( p_cur );
+  }  
+
+  // EXG metrics
+  row.push_back( boost::math::tools::mean(EXG->begin(), EXG->end()) );
+  row.push_back( boost::math::tools::median(EXG->begin(), EXG->end()) );
+  row.push_back( sqrt(boost::math::tools::sample_variance(EXG->begin(), EXG->end())) );
+  row.push_back( boost::math::tools::median_absolute_deviation(EXG->begin(), EXG->end()) );
+  std::sort( EXG->begin(), EXG->end() );
+  percentiles = calc_nth_percentile(*EXG, p_to_calc);
+  row.push_back( *(EXG->end()-1) ); // Max
+  row.push_back( *(EXG->begin()) ); // Min
+  for(auto p_cur : percentiles){
+    row.push_back( p_cur );
+  }
+
+  // LSTAR metrics
+  row.push_back( boost::math::tools::mean(LSTAR->begin(), LSTAR->end()) );
+  row.push_back( boost::math::tools::median(LSTAR->begin(), LSTAR->end()) );
+  row.push_back( sqrt(boost::math::tools::sample_variance(LSTAR->begin(), LSTAR->end())) );
+  row.push_back( boost::math::tools::median_absolute_deviation(LSTAR->begin(), LSTAR->end()) );
+  std::sort( LSTAR->begin(), LSTAR->end() );
+  percentiles = calc_nth_percentile(*LSTAR, p_to_calc);
+  //row.push_back( LSTAR[LSTAR.size() - 1] ); // Max
+  //row.push_back( LSTAR[0] ); // Min
+  row.push_back( *(LSTAR->end()-1) ); // Max
+  row.push_back( *(LSTAR->begin()) ); // Min
+
+  for(auto p_cur : percentiles){
+    row.push_back( p_cur );
+  }
+
+  matrix.row(0) = row;
+
+  //Free the image data
+  free(image->image);
+  free(image);
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), std::string(in_image) );
   columnNames.push_front("Picture.Path");
   ret.attr("names") = columnNames;
   Function asDF("as.data.frame");

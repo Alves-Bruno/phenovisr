@@ -35,6 +35,26 @@ double get_mean_gcc_for_image(image_t *image)
 }
 
 // Calculate and return gcc, rcc, ExG for every pixel
+void get_metrics_for_image(image_t *img, moving_window_metrics_t &values)
+{
+  // For every pixel...
+  for (int i = 0; i < img->size; i += 3) {
+
+    rgb RGB = get_rgb_for_pixel(i, img);
+    
+    if (!is_black(RGB)) {
+       values.Gcc->push_back(get_gcc_value(RGB));
+       values.Rcc->push_back(get_rcc_value(RGB));
+       values.Bcc->push_back(get_bcc_value(RGB));
+       values.Exg->push_back(get_exg_value(RGB));
+       values.Lstar->push_back(get_L_star_value(RGB));
+    }
+  }
+
+}
+
+
+// Calculate and return gcc, rcc, ExG for every pixel
 void get_metrics_moving_window(image_t *img1, image_t *img2, image_t *img3, moving_window_metrics_t &values)
 {
   
