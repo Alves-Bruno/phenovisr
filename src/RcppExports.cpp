@@ -5,6 +5,20 @@
 
 using namespace Rcpp;
 
+// phenovis_adjust_lstar
+std::string phenovis_adjust_lstar(std::string image_path, double l_star_mean, double l_star_std_dev, double factor);
+RcppExport SEXP _phenovisr_phenovis_adjust_lstar(SEXP image_pathSEXP, SEXP l_star_meanSEXP, SEXP l_star_std_devSEXP, SEXP factorSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< std::string >::type image_path(image_pathSEXP);
+    Rcpp::traits::input_parameter< double >::type l_star_mean(l_star_meanSEXP);
+    Rcpp::traits::input_parameter< double >::type l_star_std_dev(l_star_std_devSEXP);
+    Rcpp::traits::input_parameter< double >::type factor(factorSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_adjust_lstar(image_path, l_star_mean, l_star_std_dev, factor));
+    return rcpp_result_gen;
+END_RCPP
+}
 // phenovis_read_mask
 void phenovis_read_mask(std::string maskname);
 RcppExport SEXP _phenovisr_phenovis_read_mask(SEXP masknameSEXP) {
@@ -69,6 +83,17 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// phenovis_get_boost_stats
+DataFrame phenovis_get_boost_stats(StringVector images);
+RcppExport SEXP _phenovisr_phenovis_get_boost_stats(SEXP imagesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_get_boost_stats(images));
+    return rcpp_result_gen;
+END_RCPP
+}
 // phenovis_get_metrics
 DataFrame phenovis_get_metrics(StringVector images);
 RcppExport SEXP _phenovisr_phenovis_get_metrics(SEXP imagesSEXP) {
@@ -94,12 +119,14 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_phenovisr_phenovis_adjust_lstar", (DL_FUNC) &_phenovisr_phenovis_adjust_lstar, 4},
     {"_phenovisr_phenovis_read_mask", (DL_FUNC) &_phenovisr_phenovis_read_mask, 1},
     {"_phenovisr_phenovis_read_masks", (DL_FUNC) &_phenovisr_phenovis_read_masks, 1},
     {"_phenovisr_phenovis_get_mean_L_star", (DL_FUNC) &_phenovisr_phenovis_get_mean_L_star, 1},
     {"_phenovisr_phenovis_get_mean_gcc", (DL_FUNC) &_phenovisr_phenovis_get_mean_gcc, 1},
     {"_phenovisr_phenovis_get_moving_window", (DL_FUNC) &_phenovisr_phenovis_get_moving_window, 1},
     {"_phenovisr_phenovis_get_mean_all_metrics", (DL_FUNC) &_phenovisr_phenovis_get_mean_all_metrics, 1},
+    {"_phenovisr_phenovis_get_boost_stats", (DL_FUNC) &_phenovisr_phenovis_get_boost_stats, 1},
     {"_phenovisr_phenovis_get_metrics", (DL_FUNC) &_phenovisr_phenovis_get_metrics, 1},
     {"_phenovisr_phenovis_multimask_get_metrics", (DL_FUNC) &_phenovisr_phenovis_multimask_get_metrics, 2},
     {NULL, NULL, 0}

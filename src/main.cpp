@@ -5,14 +5,124 @@
 #include <string>
 #include "jpeg_image.h"
 #include "metrics_extraction.h"
+#include "ColorSpace.h"
 // #include <boost/math/statistics/univariate_statistics.hpp>
 #include <boost/math/tools/univariate_statistics.hpp>
 #include <boost/math/tools/bivariate_statistics.hpp>
+
+#include <cstdio>
+#include <iostream>
 
 using namespace Rcpp;
 
 static image_t *global_mask = NULL;
 static image_t **globalMasks = NULL;
+
+
+// [[Rcpp::export]]
+std::string phenovis_adjust_lstar(std::string image_path, double l_star_mean, double l_star_std_dev, double factor)
+{
+
+  // Load the image and apply mask
+  image_t *image = load_jpeg_image(image_path.c_str());
+  int considered_pixels = image->width * image->height;
+  if (global_mask) {
+    considered_pixels = apply_mask(image, global_mask);
+  }
+
+  // For every pixel...
+  for (int i = 0; i < image->size; i += 3) {
+  // for (int i = 0; i < 30; i += 3) {  
+
+    rgb RGB = get_rgb_for_pixel_256(i, image);
+    if (!is_black(RGB)) {
+
+      ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
+      ColorSpace::Lab lab;
+      rgb_.To<ColorSpace::Lab>(&lab);
+
+      // Correct with a factor
+      double l_star = lab.l;
+      // If factor is negative:
+      if(factor < 0){
+        // Filter to pixels with high level of lightness
+        if(l_star > (l_star_mean + l_star_std_dev) )
+          l_star = l_star + factor;
+      }
+      // If factor is positive:
+      else if(factor > 0){
+        // Filter to pixels with low level of lightness
+        if(l_star < (l_star_mean - l_star_std_dev) )
+          l_star = l_star + factor;
+      }
+
+      // if( abs(l_star - l_star_mean) > l_star_std_dev){
+      //   //double correction_factor = abs(l_star - l_star_std_dev);
+      //   if(l_star > l_star_mean){
+      //     l_star = l_star - factor;
+      //   } else if(l_star < l_star_mean){
+      //     l_star = l_star + factor;
+      //   }
+      // }
+
+      ColorSpace::Lab adjusted_lab(l_star, lab.a, lab.b);
+
+      ColorSpace::Rgb adjusted_rgb;
+      adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
+
+      set_rgb_for_pixel(adjusted_rgb.r, adjusted_rgb.g, adjusted_rgb.b, i, image);
+      // set_rgb_for_pixel(rgb_.r, 0, 0, i, image);
+    
+    }
+  }  
+
+  std::string to_find = ".jpg";
+  std::string to_replace = "_adjusted.jpg";
+  image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
+
+  // Write the new image:
+  write_jpeg_image(image, image_path.c_str());
+
+  //Free the image data
+  free(image->image);
+  free(image);
+
+  return image_path;
+
+}
+// std::vector<std::string> phenovis_get_pixel_values(StringVector images) {
+
+//   // names is a vector to keep image names
+//   std::vector<std::string> names;
+
+//   int i, row_number = 0;
+//   for (i = 0; i < images.size(); i++) {
+  
+//     // Load the image and apply mask
+//     image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+//     int considered_pixels = image->width * image->height;
+//     if (global_mask) {
+//       considered_pixels = apply_mask(image, global_mask);
+//     }
+
+//     std::vector<std::string> pixel_values;
+//     // For every pixel...
+//     for (int i = 0; i < image->size; i += 3) {
+
+//       rgb RGB = get_rgb_for_pixel(i, image);
+//       if (!is_black(RGB)) {
+//         HEX hex = get_hex_for_pixel(i, image);
+//         char hex_representation[7];
+//         sprintf(hex_representation, "%02X%02X%02X", hex.r, hex.g, hex.b);
+//         std::string pixel_color_s((char*) hex_representation);
+//         pixel_values.push_back(pixel_color_s); 
+//       }
+//     }
+
+//     return pixel_values;    
+//   }
+
+// }
 
 // [[Rcpp::export]]
 void phenovis_read_mask(std::string maskname)

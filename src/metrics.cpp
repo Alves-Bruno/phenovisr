@@ -14,6 +14,41 @@ rgb get_rgb_for_pixel(int pixel, image_t *image) {
   return RGB;
 }
 
+rgb get_rgb_for_pixel_256(int pixel, image_t *image) {
+  unsigned char *iimage = image->image;
+  unsigned char r = iimage[pixel];
+  unsigned char g = iimage[pixel + 1];
+  unsigned char b = iimage[pixel + 2];
+
+  rgb RGB = {(double)r, (double)g, (double)b};
+  return RGB;
+} 
+
+void set_rgb_for_pixel(double r, double g, double b, int pixel, image_t *image){
+  
+  unsigned char r_char = int(r);
+  unsigned char g_char = int(g);
+  unsigned char b_char = int(b);
+  
+  //unsigned char *iimage = image->image;
+  image->image[pixel] = r_char;
+  image->image[pixel + 1] = g_char;
+  image->image[pixel + 2] = b_char;
+
+}
+
+HEX get_hex_for_pixel(int pixel, image_t *image) {
+  
+  unsigned char *iimage = image->image;
+  unsigned char r = iimage[pixel];
+  unsigned char g = iimage[pixel + 1];
+  unsigned char b = iimage[pixel + 2];
+
+  HEX hex = {r, g, b};
+  return hex;
+}
+
+
 hsv get_HSV_for_pixel(int pixel, image_t *image) {
   rgb RGB = get_rgb_for_pixel(pixel, image);
   // if (is_black(RGB)) {
