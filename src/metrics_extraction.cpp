@@ -96,17 +96,26 @@ void get_metrics_moving_window(image_t *img1, image_t *img2, image_t *img3, movi
 // Calculate and return gcc, rcc, ExG
 std::vector<double> get_mean_all_metrics_for_image(image_t *image)
 {
-  double gcc_sum = 0;
+  //double gcc_sum = 0;
   double rcc_sum = 0;
   double bcc_sum = 0;
   double exg_sum = 0;
   int consideredPixels = 0;
+
+  double R_ = 0;
+  double G_ = 0;
+  double B_ = 0;
   
   // For every pixel...
   for (int i = 0; i < image->size; i += 3) {
     rgb RGB = get_rgb_for_pixel(i, image);
     if (!is_black(RGB)) {
-      gcc_sum += get_gcc_value(RGB);
+
+      R_ += RGB.r;
+      G_ += RGB.g;
+      B_ += RGB.b;
+
+      //gcc_sum += get_gcc_value(RGB);
       rcc_sum += get_rcc_value(RGB);
       bcc_sum += get_bcc_value(RGB);
       exg_sum += get_exg_value(RGB);
@@ -114,8 +123,16 @@ std::vector<double> get_mean_all_metrics_for_image(image_t *image)
     }
   }
 
+  double R_avg = R_ / consideredPixels;
+  double G_avg = G_ / consideredPixels;
+  double B_avg = B_ / consideredPixels;
+
+  double total_avg = R_avg + G_avg + B_avg;
+  double gcc_mean = G_avg / total_avg;
+
   std::vector<double> mean_values;
-  mean_values.push_back(gcc_sum / consideredPixels);
+  //mean_values.push_back(gcc_sum / consideredPixels);
+  mean_values.push_back(gcc_mean);
   mean_values.push_back(rcc_sum / consideredPixels);
   mean_values.push_back(bcc_sum / consideredPixels);
   mean_values.push_back(exg_sum / consideredPixels);
