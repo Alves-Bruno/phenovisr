@@ -18,6 +18,97 @@ using namespace Rcpp;
 static image_t *global_mask = NULL;
 static image_t **globalMasks = NULL;
 
+// [[Rcpp::export]]
+DataFrame phenovis_lab_stats(StringVector images)
+{
+
+  CharacterVector columnNames;
+  columnNames.push_back("L_mean");
+  columnNames.push_back("A_mean");
+  columnNames.push_back("B_mean");
+  columnNames.push_back("Gcc_our");
+  columnNames.push_back("Gcc_Bruna");
+
+  NumericMatrix matrix(images.size(), 5);
+
+  // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+      double count_pixels = 0;
+      double L_sum = 0;
+      double A_sum = 0;
+      double B_sum = 0;
+      double r_sum = 0;
+      double g_sum = 0;
+      double b_sum = 0;
+      double Gcc_our_sum = 0;
+      
+    // For every pixel...
+      for (int p = 0; p < image->size; p += 3) {
+      // for (int p = 0; p < 30; p += 3) {  
+
+        rgb RGB = get_rgb_for_pixel_256(p, image);
+        if (!is_black(RGB)) {
+
+          ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
+          ColorSpace::Lab lab;
+          rgb_.To<ColorSpace::Lab>(&lab);
+
+          L_sum += lab.l;
+          A_sum += lab.a;
+          B_sum += lab.b;
+          r_sum += RGB.r;
+          g_sum += RGB.g;
+          b_sum += RGB.b;
+          Gcc_our_sum += get_gcc_value(RGB);
+          count_pixels += 1;
+        }
+      }  
+
+      double L_mean = L_sum / count_pixels;
+      double A_mean = A_sum / count_pixels;
+      double B_mean = B_sum / count_pixels;
+      double Gcc_our = Gcc_our_sum / count_pixels;
+      double total_avg_gcc = (r_sum / count_pixels) + (g_sum / count_pixels) + (b_sum / count_pixels);
+      double gcc_mean_Bruna = (g_sum / count_pixels) / total_avg_gcc;
+
+      // Push back the image names
+      names.push_back(std::string(images(i)));
+
+      NumericVector row;
+      row.push_back(L_mean);
+      row.push_back(A_mean);
+      row.push_back(B_mean);
+      row.push_back(Gcc_our);
+      row.push_back(gcc_mean_Bruna);
+
+      matrix.row(row_number) = row;
+      row_number++;
+
+      //Free the image data
+      free(image->image);
+      free(image);
+
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+
+}
 
 // [[Rcpp::export]]
 std::string phenovis_adjust_lstar(std::string image_path, double l_star_mean, double l_star_std_dev, double factor)

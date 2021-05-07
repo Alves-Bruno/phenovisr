@@ -5,6 +5,17 @@
 
 using namespace Rcpp;
 
+// phenovis_lab_stats
+DataFrame phenovis_lab_stats(StringVector images);
+RcppExport SEXP _phenovisr_phenovis_lab_stats(SEXP imagesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_lab_stats(images));
+    return rcpp_result_gen;
+END_RCPP
+}
 // phenovis_adjust_lstar
 std::string phenovis_adjust_lstar(std::string image_path, double l_star_mean, double l_star_std_dev, double factor);
 RcppExport SEXP _phenovisr_phenovis_adjust_lstar(SEXP image_pathSEXP, SEXP l_star_meanSEXP, SEXP l_star_std_devSEXP, SEXP factorSEXP) {
@@ -119,6 +130,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_phenovisr_phenovis_lab_stats", (DL_FUNC) &_phenovisr_phenovis_lab_stats, 1},
     {"_phenovisr_phenovis_adjust_lstar", (DL_FUNC) &_phenovisr_phenovis_adjust_lstar, 4},
     {"_phenovisr_phenovis_read_mask", (DL_FUNC) &_phenovisr_phenovis_read_mask, 1},
     {"_phenovisr_phenovis_read_masks", (DL_FUNC) &_phenovisr_phenovis_read_masks, 1},
