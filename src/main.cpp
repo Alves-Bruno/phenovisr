@@ -19,6 +19,103 @@ static image_t *global_mask = NULL;
 static image_t **globalMasks = NULL;
 
 // [[Rcpp::export]]
+std::string phenovis_adjust_lab(std::string image_path, 
+  double l_star_mean, double l_p25, double l_p75, double l_factor,
+  double a_star_mean, double a_p25, double a_p75, double a_factor,
+  double b_star_mean, double b_p25, double b_p75, double b_factor)
+{
+
+  // Load the image and apply mask
+  image_t *image = load_jpeg_image(image_path.c_str());
+  int considered_pixels = image->width * image->height;
+  if (global_mask) {
+    considered_pixels = apply_mask(image, global_mask);
+  }
+
+  // For every pixel...
+  for (int i = 0; i < image->size; i += 3) {
+  // for (int i = 0; i < 30; i += 3) {  
+
+    rgb RGB = get_rgb_for_pixel_256(i, image);
+    if (!is_black(RGB)) {
+
+      ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
+      ColorSpace::Lab lab;
+      rgb_.To<ColorSpace::Lab>(&lab);
+
+
+      // Correct with a factor
+      // If factor is negative:
+      if(l_factor < 0){
+        // Filter to pixels with high level of lightness
+        if(lab.l > l_p75 )
+          lab.l = lab.l + l_factor;
+      }
+      // If factor is positive:
+      else if(l_factor > 0){
+        // Filter to pixels with low level of lightness
+        if(lab.l < l_p25 )
+          lab.l = lab.l + l_factor;
+      }
+
+
+      // Correct with factor: a
+      // If factor is negative:
+      if(a_factor < 0){
+        // Filter to pixels with high level of lightness
+        if(lab.a > a_p75 )
+          lab.a = lab.a + a_factor;
+      }
+      // If factor is positive:
+      else if(a_factor > 0){
+        // Filter to pixels with low level of lightness
+        if(lab.a < a_p25 )
+          lab.a = lab.a + a_factor;
+      }
+
+
+      // Correct with factor: b
+      // If factor is negative:
+      if(b_factor < 0){
+        // Filter to pixels with high level of lightness
+        if(lab.b > b_p75 )
+          lab.b = lab.b + b_factor;
+      }
+      // If factor is positive:
+      else if(b_factor > 0){
+        // Filter to pixels with low level of lightness
+        if(lab.b < b_p25 )
+          lab.b = lab.b + b_factor;
+      }
+
+      ColorSpace::Lab adjusted_lab(lab.l, lab.a, lab.b);
+
+      ColorSpace::Rgb adjusted_rgb;
+      adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
+
+      set_rgb_for_pixel(adjusted_rgb.r, adjusted_rgb.g, adjusted_rgb.b, i, image);
+      // set_rgb_for_pixel(rgb_.r, 0, 0, i, image);
+    
+    }
+  }  
+
+  std::string to_find = ".jpg";
+  std::string to_replace = "_adjusted.jpg";
+  image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
+
+  // Write the new image:
+  write_jpeg_image(image, image_path.c_str());
+
+  //Free the image data
+  free(image->image);
+  free(image);
+
+  return image_path;
+
+}
+
+
+// [[Rcpp::export]]
 DataFrame phenovis_lab_stats(StringVector images)
 {
 
