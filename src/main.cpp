@@ -88,6 +88,26 @@ std::string phenovis_adjust_lab(std::string image_path,
           lab.b = lab.b + b_factor;
       }
 
+      // Adjust limits 
+      if(lab.l > 100){
+        lab.l = 100;
+      } 
+      if(lab.l < 0){
+        lab.l = 0;
+      }
+      if(lab.a > 100){
+        lab.a = 100;
+      } 
+      if(lab.a < -100){
+        lab.a = -100;
+      }
+      if(lab.b > 100){
+        lab.b = 100;
+      } 
+      if(lab.b < -100){
+        lab.b = -100;
+      }
+
       ColorSpace::Lab adjusted_lab(lab.l, lab.a, lab.b);
 
       ColorSpace::Rgb adjusted_rgb;
