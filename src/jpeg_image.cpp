@@ -149,7 +149,6 @@ image_t *load_jpeg_image (const char *filename)
   return image; /* should be freed */
 }
 
-
 int apply_mask (image_t *image, image_t *mask)
 {
   if (image->width != mask->width || image->height != image->height) {
@@ -175,7 +174,25 @@ int apply_mask (image_t *image, image_t *mask)
       total_after_mask++;
     }
   }
+
   return total_after_mask;
+}
+
+std::vector<bool> read_mask_bits (image_t *mask)
+{
+  std::vector<bool> mask_bool_vec(mask->size, false);
+
+  for (int i = 0; i < mask->size; i = i+3) {
+    unsigned char r = mask->image[i+0];
+    unsigned char g = mask->image[i+1];
+    unsigned char b = mask->image[i+2];
+    if (r > 128 && g > 128 && b > 128){
+      mask_bool_vec[i+0] = true;
+      mask_bool_vec[i+1] = true;
+      mask_bool_vec[i+2] = true;
+    }
+  }
+  return mask_bool_vec;
 }
 
 std::vector<int> get_unmasked_pixels (image_t *mask) {

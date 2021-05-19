@@ -18,5 +18,6 @@ image_t *load_jpeg_image (const char *filename);
 int apply_mask (image_t *image, image_t *mask);
 std::vector<int> get_unmasked_pixels(image_t *mask);
 std::vector<int> get_all_pixels(image_t *image);
+std::vector<bool> read_mask_bits (image_t *mask);
 
 #endif

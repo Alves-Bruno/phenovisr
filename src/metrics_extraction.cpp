@@ -28,9 +28,14 @@ double get_mean_gcc_for_image(image_t *image)
     rgb RGB = get_rgb_for_pixel(i, image);
     if (!is_black(RGB)) {
       gcc_sum += get_gcc_value(RGB);
+      // unsigned char r_255 = 255;
+      // image->image[i] = r_255;
+      // image->image[i+1] = 0;
+      // image->image[i+2] = 0;
       consideredPixels++;
     }
   }
+
   return gcc_sum / consideredPixels;
 }
 

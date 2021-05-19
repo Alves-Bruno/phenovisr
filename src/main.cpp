@@ -17,6 +17,7 @@ using namespace Rcpp;
 
 static image_t *global_mask = NULL;
 static image_t **globalMasks = NULL;
+std::vector<bool> global_mask_bits;
 
 // [[Rcpp::export]]
 std::string phenovis_adjust_lab(std::string image_path, 
@@ -58,6 +59,18 @@ std::string phenovis_adjust_lab(std::string image_path,
           lab.l = lab.l + l_factor;
       }
 
+      // if(l_factor != 0){
+      //   // To RGB
+      //   ColorSpace::Lab l_modified(lab.l, lab.a, lab.b);
+      //   ColorSpace::Rgb l_mod_rgb;
+      //   l_modified.To<ColorSpace::Rgb>(&l_mod_rgb);
+      //   // To LAB
+      //   ColorSpace::Lab l_diff;
+      //   l_mod_rgb.To<ColorSpace::Lab>(&l_diff);
+
+      //   // Restore A
+      //   lab.a = lab.a + (l_diff.a - lab.a);
+      // }
 
       // Correct with factor: a
       // If factor is negative:
@@ -72,7 +85,6 @@ std::string phenovis_adjust_lab(std::string image_path,
         if(lab.a < a_p25 )
           lab.a = lab.a + a_factor;
       }
-
 
       // Correct with factor: b
       // If factor is negative:
@@ -174,7 +186,7 @@ DataFrame phenovis_lab_stats(StringVector images)
       // for (int p = 0; p < 30; p += 3) {  
 
         rgb RGB = get_rgb_for_pixel_256(p, image);
-        if (!is_black(RGB)) {
+        if (global_mask_bits[p]) {
 
           ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
           ColorSpace::Lab lab;
@@ -188,8 +200,16 @@ DataFrame phenovis_lab_stats(StringVector images)
           b_sum += RGB.b;
           Gcc_our_sum += get_gcc_value(RGB);
           count_pixels += 1;
+
+          // test outputed image with mask 
+          //unsigned char r_255 = 255;
+          //image->image[p] = r_255;
+          //image->image[p+1] = 0;
+          //image->image[p+2] = 0;
         }
       }  
+      // test outputed image with mask  
+      //write_jpeg_image(image, std::string(images(i)).c_str());
 
       double L_mean = L_sum / count_pixels;
       double A_mean = A_sum / count_pixels;
@@ -341,6 +361,7 @@ void phenovis_read_mask(std::string maskname)
     global_mask = NULL;
   }
   global_mask = load_jpeg_image(maskname.c_str());
+  global_mask_bits = read_mask_bits(global_mask);
 }
 
 // [[Rcpp::export]]
@@ -442,6 +463,8 @@ DataFrame phenovis_get_mean_gcc(StringVector images) {
 
     matrix.row(row_number) = row;
     row_number++;
+
+    // write_jpeg_image(image, std::string(images(i)).c_str());
 
     //Free the image data
     free(image->image);
