@@ -65,7 +65,7 @@ void write_jpeg_image(image_t *image, const char *image_path){
   /* Now you can set any non-default parameters you wish to.
    * Here we just illustrate the use of quality (quantization table) scaling:
    */
-  jpeg_set_quality(&cinfo, 100, TRUE /* limit to baseline-JPEG values */);
+  jpeg_set_quality(&cinfo, 90, TRUE /* limit to baseline-JPEG values */);
 
   /* Step 4: Start compressor */
 

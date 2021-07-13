@@ -26,9 +26,9 @@ rgb get_rgb_for_pixel_256(int pixel, image_t *image) {
 
 void set_rgb_for_pixel(double r, double g, double b, int pixel, image_t *image){
   
-  unsigned char r_char = int(r);
-  unsigned char g_char = int(g);
-  unsigned char b_char = int(b);
+  unsigned char r_char = round(r);
+  unsigned char g_char = round(g);
+  unsigned char b_char = round(b);
   
   //unsigned char *iimage = image->image;
   image->image[pixel] = r_char;

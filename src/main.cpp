@@ -20,131 +20,458 @@ static image_t **globalMasks = NULL;
 std::vector<bool> global_mask_bits;
 
 // [[Rcpp::export]]
-std::string phenovis_adjust_lab(std::string image_path, 
-  double l_star_mean, double l_p25, double l_p75, double l_factor,
-  double a_star_mean, double a_p25, double a_p75, double a_factor,
-  double b_star_mean, double b_p25, double b_p75, double b_factor)
+DataFrame phenovis_apply_mask_for_paper(
+  StringVector images)
 {
 
-  // Load the image and apply mask
-  image_t *image = load_jpeg_image(image_path.c_str());
-  int considered_pixels = image->width * image->height;
-  if (global_mask) {
-    considered_pixels = apply_mask(image, global_mask);
+  CharacterVector columnNames;
+  NumericMatrix matrix(images.size(), 1);
+
+  // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  // adj_names is a vector to keep the new image names
+  std::vector<std::string> adj_names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+    // For every pixel...
+      for (int p = 0; p < image->size; p += 3) {
+
+        rgb RGB = get_rgb_for_pixel_256(p, image);
+        if (global_mask_bits[p]) {
+
+          set_rgb_for_pixel(RGB.r, RGB.g, RGB.b, p, image);
+        } else{
+          set_rgb_for_pixel(255,255,255, p, image);
+        }
+      }  
+
+      std::string image_path = std::string(images(i));
+      std::string to_find = ".jpg";
+      std::string to_replace = "_masked.jpg";
+      image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
+
+      // Write the new image:
+      write_jpeg_image(image, image_path.c_str());
+
+      // Push back the old image names
+      names.push_back(std::string(images(i)));
+
+      // Push back the new image names 
+      adj_names.push_back(image_path);
+
+      //Free the image data
+      free(image->image);
+      free(image);
   }
 
-  // For every pixel...
-  for (int i = 0; i < image->size; i += 3) {
-  // for (int i = 0; i < 30; i += 3) {  
-
-    rgb RGB = get_rgb_for_pixel_256(i, image);
-    if (!is_black(RGB)) {
-
-      ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
-      ColorSpace::Lab lab;
-      rgb_.To<ColorSpace::Lab>(&lab);
-
-
-      // Correct with a factor
-      // If factor is negative:
-      if(l_factor < 0){
-        // Filter to pixels with high level of lightness
-        if(lab.l > l_p75 )
-          lab.l = lab.l + l_factor;
-      }
-      // If factor is positive:
-      else if(l_factor > 0){
-        // Filter to pixels with low level of lightness
-        if(lab.l < l_p25 )
-          lab.l = lab.l + l_factor;
-      }
-
-      // if(l_factor != 0){
-      //   // To RGB
-      //   ColorSpace::Lab l_modified(lab.l, lab.a, lab.b);
-      //   ColorSpace::Rgb l_mod_rgb;
-      //   l_modified.To<ColorSpace::Rgb>(&l_mod_rgb);
-      //   // To LAB
-      //   ColorSpace::Lab l_diff;
-      //   l_mod_rgb.To<ColorSpace::Lab>(&l_diff);
-
-      //   // Restore A
-      //   lab.a = lab.a + (l_diff.a - lab.a);
-      // }
-
-      // Correct with factor: a
-      // If factor is negative:
-      if(a_factor < 0){
-        // Filter to pixels with high level of lightness
-        if(lab.a > a_p75 )
-          lab.a = lab.a + a_factor;
-      }
-      // If factor is positive:
-      else if(a_factor > 0){
-        // Filter to pixels with low level of lightness
-        if(lab.a < a_p25 )
-          lab.a = lab.a + a_factor;
-      }
-
-      // Correct with factor: b
-      // If factor is negative:
-      if(b_factor < 0){
-        // Filter to pixels with high level of lightness
-        if(lab.b > b_p75 )
-          lab.b = lab.b + b_factor;
-      }
-      // If factor is positive:
-      else if(b_factor > 0){
-        // Filter to pixels with low level of lightness
-        if(lab.b < b_p25 )
-          lab.b = lab.b + b_factor;
-      }
-
-      // Adjust limits 
-      if(lab.l > 100){
-        lab.l = 100;
-      } 
-      if(lab.l < 0){
-        lab.l = 0;
-      }
-      if(lab.a > 100){
-        lab.a = 100;
-      } 
-      if(lab.a < -100){
-        lab.a = -100;
-      }
-      if(lab.b > 100){
-        lab.b = 100;
-      } 
-      if(lab.b < -100){
-        lab.b = -100;
-      }
-
-      ColorSpace::Lab adjusted_lab(lab.l, lab.a, lab.b);
-
-      ColorSpace::Rgb adjusted_rgb;
-      adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
-
-      set_rgb_for_pixel(adjusted_rgb.r, adjusted_rgb.g, adjusted_rgb.b, i, image);
-      // set_rgb_for_pixel(rgb_.r, 0, 0, i, image);
-    
-    }
-  }  
-
-  std::string to_find = ".jpg";
-  std::string to_replace = "_adjusted.jpg";
-  image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
-
-  // Write the new image:
-  write_jpeg_image(image, image_path.c_str());
-
-  //Free the image data
-  free(image->image);
-  free(image);
-
-  return image_path;
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.insert(ret.begin(), adj_names);
+  columnNames.push_front("Picture.Path.adj");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
 
 }
+
+// [[Rcpp::export]]
+DataFrame phenovis_adjust_rgb(
+  StringVector images,
+  NumericVector r_diff,
+  NumericVector g_diff,
+  NumericVector b_diff)
+{
+
+  CharacterVector columnNames;
+  columnNames.push_back("r_mean");
+  columnNames.push_back("g_mean");
+  columnNames.push_back("b_mean");
+  columnNames.push_back("orig_r_mean");
+  columnNames.push_back("orig_g_mean");
+  columnNames.push_back("orig_b_mean");
+
+  NumericMatrix matrix(images.size(), 6);
+
+  // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  // adj_names is a vector to keep the new image names
+  std::vector<std::string> adj_names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+    // Vector to save adjusted pixels
+    std::vector<rgb> image_adj;
+
+    // Vector to save orig pixels
+    std::vector<rgb> image_orig;
+
+    // For every pixel...
+      for (int p = 0; p < image->size; p += 3) {
+
+        rgb RGB = get_rgb_for_pixel_256(p, image);
+        if (global_mask_bits[p]) {
+
+          rgb adj_rgb = {0,0,0};
+          adj_rgb.r = RGB.r + r_diff[i];
+          adj_rgb.g = RGB.g + g_diff[i];
+          adj_rgb.b = RGB.b + b_diff[i];
+
+          // condition ? expression-true : expression-false
+          // Check values less than 0
+          adj_rgb.r < 0 ? adj_rgb.r = 0 : adj_rgb.r = adj_rgb.r;
+          adj_rgb.g < 0 ? adj_rgb.g = 0 : adj_rgb.g = adj_rgb.g;
+          adj_rgb.b < 0 ? adj_rgb.b = 0 : adj_rgb.b = adj_rgb.b;
+          // Check values greater than 255
+          adj_rgb.r > 255 ? adj_rgb.r = 255 : adj_rgb.r = adj_rgb.r;
+          adj_rgb.g > 255 ? adj_rgb.g = 255 : adj_rgb.g = adj_rgb.g;
+          adj_rgb.b > 255 ? adj_rgb.b = 255 : adj_rgb.b = adj_rgb.b;
+
+          // Save pixel
+          image_adj.push_back(adj_rgb);
+          // Save orig pixel
+          image_orig.push_back(RGB);
+
+          set_rgb_for_pixel(adj_rgb.r, adj_rgb.g, adj_rgb.b, p, image);
+
+        }
+      }  
+
+      std::string image_path = std::string(images(i));
+      std::string to_find = ".jpg";
+      std::string to_replace = "_adjusted.jpg";
+      image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
+
+      // Write the new image:
+      write_jpeg_image(image, image_path.c_str());
+
+      // Push back the old image names
+      names.push_back(std::string(images(i)));
+
+      // Push back the new image names 
+      adj_names.push_back(image_path);
+
+      // Calculate stats
+      double r_sum = 0, g_sum = 0, b_sum = 0;
+      int i_rgb_pixels = 0;
+      for(auto rgb_pixel : image_adj){
+        r_sum += rgb_pixel.r;
+        g_sum += rgb_pixel.g;
+        b_sum += rgb_pixel.b;
+        i_rgb_pixels += 1;
+      }
+      double r_avg = r_sum / i_rgb_pixels;
+      double g_avg = g_sum / i_rgb_pixels;
+      double b_avg = b_sum / i_rgb_pixels;
+
+      // Calculate stats
+      double orig_r_sum = 0, orig_g_sum = 0, orig_b_sum = 0;
+      int orig_i_rgb_pixels = 0;
+      for(auto orig_rgb_pixel : image_orig){
+        orig_r_sum += orig_rgb_pixel.r;
+        orig_g_sum += orig_rgb_pixel.g;
+        orig_b_sum += orig_rgb_pixel.b;
+        orig_i_rgb_pixels += 1;
+      }
+      double orig_r_avg = orig_r_sum / orig_i_rgb_pixels;
+      double orig_g_avg = orig_g_sum / orig_i_rgb_pixels;
+      double orig_b_avg = orig_b_sum / orig_i_rgb_pixels;
+      
+      NumericVector row;
+      row.push_back(r_avg);
+      row.push_back(g_avg);
+      row.push_back(b_avg);
+      row.push_back(orig_r_avg);
+      row.push_back(orig_g_avg);
+      row.push_back(orig_b_avg);
+
+      matrix.row(row_number) = row;
+      row_number++;
+
+      //Free the image data
+      free(image->image);
+      free(image);
+
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.insert(ret.begin(), adj_names);
+  columnNames.push_front("Picture.Path.adj");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+
+}
+
+
+// [[Rcpp::export]]
+DataFrame phenovis_adjust_lab(
+  StringVector images,
+  NumericVector l_diff,
+  NumericVector a_diff,
+  NumericVector b_diff)
+{
+
+  CharacterVector columnNames;
+  columnNames.push_back("L_mean");
+  columnNames.push_back("A_mean");
+  columnNames.push_back("B_mean");
+
+  NumericMatrix matrix(images.size(), 3);
+
+  // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  // adj_names is a vector to keep the new image names
+  std::vector<std::string> adj_names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+    // Vector to save LAB pixels
+    std::vector<ColorSpace::Lab> image_in_lab;
+
+    // For every pixel...
+      for (int p = 0; p < image->size; p += 3) {
+
+        rgb RGB = get_rgb_for_pixel_256(p, image);
+        if (global_mask_bits[p]) {
+
+          // Go to LAB from RGB pixels
+          ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
+          ColorSpace::Lab lab;
+          rgb_.To<ColorSpace::Lab>(&lab);
+          
+          lab.l = lab.l + l_diff[i];
+          lab.a = lab.a + a_diff[i];
+          lab.b = lab.b + b_diff[i];
+
+          // Check values less than 0
+          lab.l < 0 ? lab.l = 0 : lab.l = lab.l;
+          lab.a < -100 ? lab.a = -100 : lab.a = lab.a;
+          lab.b < -100 ? lab.b = -100 : lab.b = lab.b;
+          // Check values greater than 255
+          lab.l > 100 ? lab.l = 100 : lab.l = lab.l;
+          lab.a > 100 ? lab.a = 100 : lab.a = lab.a;
+          lab.b > 100 ? lab.b = 100 : lab.b = lab.b;
+
+          // Save LAB pixel
+          image_in_lab.push_back(lab);
+
+          // Get back to RGB
+          ColorSpace::Lab adjusted_lab(lab.l, lab.a, lab.b);
+         ColorSpace::Rgb adjusted_rgb;
+         adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
+
+          set_rgb_for_pixel(adjusted_rgb.r, adjusted_rgb.g, adjusted_rgb.b, p, image);
+
+        }
+      }  
+
+      std::string image_path = std::string(images(i));
+      std::string to_find = ".jpg";
+      std::string to_replace = "_adjusted.jpg";
+      image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
+
+      // Write the new image:
+      write_jpeg_image(image, image_path.c_str());
+
+      // Push back the old image names
+      names.push_back(std::string(images(i)));
+
+      // Push back the new image names 
+      adj_names.push_back(image_path);
+
+      // Calculate stats
+      double L_sum = 0, A_sum = 0, B_sum = 0;
+      int i_lab_pixels = 0;
+      for(auto lab_pixel : image_in_lab){
+        L_sum += lab_pixel.l;
+        A_sum += lab_pixel.a;
+        B_sum += lab_pixel.b;
+        i_lab_pixels += 1;
+      }
+      double L_avg = L_sum / i_lab_pixels;
+      double A_avg = A_sum / i_lab_pixels;
+      double B_avg = B_sum / i_lab_pixels;
+      
+      NumericVector row;
+      row.push_back(L_avg);
+      row.push_back(A_avg);
+      row.push_back(B_avg);
+
+      matrix.row(row_number) = row;
+      row_number++;
+
+      //Free the image data
+      free(image->image);
+      free(image);
+
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.insert(ret.begin(), adj_names);
+  columnNames.push_front("Picture.Path.adj");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+
+}
+
+// // [[Rcpp::export]]
+// DataFrame phenovis_adjust_lab(
+//   StringVector images,
+//   double l_diff,
+//   double a_diff,
+//   double b_diff)
+// {
+
+//   CharacterVector columnNames;
+//   columnNames.push_back("L_mean");
+//   columnNames.push_back("A_mean");
+//   columnNames.push_back("B_mean");
+  
+//   NumericMatrix matrix(images.size(), 3);
+
+//   // names is a vector to keep image names
+//   std::vector<std::string> names;
+  
+//   int i_img, row_number = 0;
+//   for (i_img = 0; i_img < images.size(); i_img++) {
+    
+//     // Load the image and apply mask
+//     image_t *image = load_jpeg_image(std::string(images(i_img)).c_str());
+//     int considered_pixels = image->width * image->height;
+//     if (global_mask) {
+//       considered_pixels = apply_mask(image, global_mask);
+//     }
+
+//     // Vector to save LAB pixels
+//     std::vector<ColorSpace::Lab> image_in_lab;
+    
+//     // For every pixel...
+//     for (int i = 0; i < image->size; i += 3) {
+//     // for (int i = 0; i < 30; i += 3) {  
+
+//       rgb RGB = get_rgb_for_pixel_256(i, image);
+//       if (global_mask_bits[i]) {
+
+//         // Go to LAB from RGB pixels
+//         ColorSpace::Rgb rgb_(RGB.r, RGB.g, RGB.b);
+//         ColorSpace::Lab lab;
+//         rgb_.To<ColorSpace::Lab>(&lab);
+
+//         lab.l = lab.l - l_diff;
+//         lab.a = lab.a - a_diff;
+//         lab.b = lab.b - b_diff;
+
+//         // Adjust limits 
+//         if(lab.l > 100){
+//           lab.l = 100;
+//         } 
+//         if(lab.l < 0){
+//           lab.l = 0;
+//         }
+//         if(lab.a > 100){
+//           lab.a = 100;
+//         } 
+//         if(lab.a < -100){
+//           lab.a = -100;
+//         }
+//         if(lab.b > 100){
+//           lab.b = 100;
+//         } 
+//         if(lab.b < -100){
+//           lab.b = -100;
+//         }
+
+//         // Save LAB pixel
+//         image_in_lab.push_back(lab);
+
+//         // Get back to RGB
+//         ColorSpace::Lab adjusted_lab(lab.l, lab.a, lab.b);
+//         ColorSpace::Rgb adjusted_rgb;
+//         adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
+
+//         set_rgb_for_pixel(adjusted_rgb.r, adjusted_rgb.g, adjusted_rgb.b, i, image);
+//         // set_rgb_for_pixel(rgb_.r, 0, 0, i, image);
+      
+//       }
+//     }  
+
+//     std::string image_path = std::string(images(i_img));
+//     std::string to_find = ".jpg";
+//     std::string to_replace = "_adjusted.jpg";
+//     image_path.replace(image_path.find(to_find),to_find.length(),to_replace);
+
+//     // Write the new image:
+//     write_jpeg_image(image, image_path.c_str());
+
+//     //Free the image data
+//     free(image->image);
+//     free(image);
+
+//     double L_sum = 0, A_sum = 0, B_sum = 0;
+//     int i_lab_pixels = 0;
+//     for(auto lab_pixel : image_in_lab){
+//       L_sum += lab_pixel.l;
+//       A_sum += lab_pixel.a;
+//       B_sum += lab_pixel.b;
+//       i_lab_pixels += 1;
+//     }
+//     double L_avg = L_sum / i_lab_pixels;
+//     double A_avg = A_sum / i_lab_pixels;
+//     double B_avg = B_sum / i_lab_pixels;
+
+//     NumericVector row;
+//     row.push_back(L_avg);
+//     row.push_back(A_avg);
+//     row.push_back(B_avg);
+
+//     matrix.row(row_number) = row;
+//     row_number++;
+
+//   }
+
+//   // Create the resulting data frame
+//   DataFrame ret(matrix);
+//   ret.insert(ret.begin(), names);
+//   columnNames.push_front("Picture.Path");
+//   ret.attr("names") = columnNames;
+//   Function asDF("as.data.frame");
+//   return asDF(ret);
+
+// }
 
 
 // [[Rcpp::export]]
@@ -157,8 +484,11 @@ DataFrame phenovis_lab_stats(StringVector images)
   columnNames.push_back("B_mean");
   columnNames.push_back("Gcc_our");
   columnNames.push_back("Gcc_Bruna");
+  columnNames.push_back("r_mean");
+  columnNames.push_back("g_mean");
+  columnNames.push_back("b_mean");
 
-  NumericMatrix matrix(images.size(), 5);
+  NumericMatrix matrix(images.size(), 8);
 
   // names is a vector to keep image names
   std::vector<std::string> names;
@@ -227,6 +557,9 @@ DataFrame phenovis_lab_stats(StringVector images)
       row.push_back(B_mean);
       row.push_back(Gcc_our);
       row.push_back(gcc_mean_Bruna);
+      row.push_back(r_sum / count_pixels);
+      row.push_back(g_sum / count_pixels);
+      row.push_back(b_sum / count_pixels);
 
       matrix.row(row_number) = row;
       row_number++;
