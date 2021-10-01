@@ -5,26 +5,42 @@
 
 using namespace Rcpp;
 
-// phenovis_adjust_lab
-std::string phenovis_adjust_lab(std::string image_path, double l_star_mean, double l_p25, double l_p75, double l_factor, double a_star_mean, double a_p25, double a_p75, double a_factor, double b_star_mean, double b_p25, double b_p75, double b_factor);
-RcppExport SEXP _phenovisr_phenovis_adjust_lab(SEXP image_pathSEXP, SEXP l_star_meanSEXP, SEXP l_p25SEXP, SEXP l_p75SEXP, SEXP l_factorSEXP, SEXP a_star_meanSEXP, SEXP a_p25SEXP, SEXP a_p75SEXP, SEXP a_factorSEXP, SEXP b_star_meanSEXP, SEXP b_p25SEXP, SEXP b_p75SEXP, SEXP b_factorSEXP) {
+// phenovis_apply_mask_for_paper
+DataFrame phenovis_apply_mask_for_paper(StringVector images);
+RcppExport SEXP _phenovisr_phenovis_apply_mask_for_paper(SEXP imagesSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< std::string >::type image_path(image_pathSEXP);
-    Rcpp::traits::input_parameter< double >::type l_star_mean(l_star_meanSEXP);
-    Rcpp::traits::input_parameter< double >::type l_p25(l_p25SEXP);
-    Rcpp::traits::input_parameter< double >::type l_p75(l_p75SEXP);
-    Rcpp::traits::input_parameter< double >::type l_factor(l_factorSEXP);
-    Rcpp::traits::input_parameter< double >::type a_star_mean(a_star_meanSEXP);
-    Rcpp::traits::input_parameter< double >::type a_p25(a_p25SEXP);
-    Rcpp::traits::input_parameter< double >::type a_p75(a_p75SEXP);
-    Rcpp::traits::input_parameter< double >::type a_factor(a_factorSEXP);
-    Rcpp::traits::input_parameter< double >::type b_star_mean(b_star_meanSEXP);
-    Rcpp::traits::input_parameter< double >::type b_p25(b_p25SEXP);
-    Rcpp::traits::input_parameter< double >::type b_p75(b_p75SEXP);
-    Rcpp::traits::input_parameter< double >::type b_factor(b_factorSEXP);
-    rcpp_result_gen = Rcpp::wrap(phenovis_adjust_lab(image_path, l_star_mean, l_p25, l_p75, l_factor, a_star_mean, a_p25, a_p75, a_factor, b_star_mean, b_p25, b_p75, b_factor));
+    Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_apply_mask_for_paper(images));
+    return rcpp_result_gen;
+END_RCPP
+}
+// phenovis_adjust_rgb
+DataFrame phenovis_adjust_rgb(StringVector images, NumericVector r_diff, NumericVector g_diff, NumericVector b_diff);
+RcppExport SEXP _phenovisr_phenovis_adjust_rgb(SEXP imagesSEXP, SEXP r_diffSEXP, SEXP g_diffSEXP, SEXP b_diffSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type r_diff(r_diffSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type g_diff(g_diffSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type b_diff(b_diffSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_adjust_rgb(images, r_diff, g_diff, b_diff));
+    return rcpp_result_gen;
+END_RCPP
+}
+// phenovis_adjust_lab
+DataFrame phenovis_adjust_lab(StringVector images, NumericVector l_diff, NumericVector a_diff, NumericVector b_diff);
+RcppExport SEXP _phenovisr_phenovis_adjust_lab(SEXP imagesSEXP, SEXP l_diffSEXP, SEXP a_diffSEXP, SEXP b_diffSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type l_diff(l_diffSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type a_diff(a_diffSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type b_diff(b_diffSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_adjust_lab(images, l_diff, a_diff, b_diff));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -153,7 +169,9 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_phenovisr_phenovis_adjust_lab", (DL_FUNC) &_phenovisr_phenovis_adjust_lab, 13},
+    {"_phenovisr_phenovis_apply_mask_for_paper", (DL_FUNC) &_phenovisr_phenovis_apply_mask_for_paper, 1},
+    {"_phenovisr_phenovis_adjust_rgb", (DL_FUNC) &_phenovisr_phenovis_adjust_rgb, 4},
+    {"_phenovisr_phenovis_adjust_lab", (DL_FUNC) &_phenovisr_phenovis_adjust_lab, 4},
     {"_phenovisr_phenovis_lab_stats", (DL_FUNC) &_phenovisr_phenovis_lab_stats, 1},
     {"_phenovisr_phenovis_adjust_lstar", (DL_FUNC) &_phenovisr_phenovis_adjust_lstar, 4},
     {"_phenovisr_phenovis_read_mask", (DL_FUNC) &_phenovisr_phenovis_read_mask, 1},

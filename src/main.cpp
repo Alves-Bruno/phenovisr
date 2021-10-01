@@ -13,11 +13,236 @@
 #include <cstdio>
 #include <iostream>
 
+#include "bitmap_image.hpp"
+
+#include <sys/types.h>
+#include <unistd.h>
+
+#include <chrono>
+
 using namespace Rcpp;
 
 static image_t *global_mask = NULL;
 static image_t **globalMasks = NULL;
 std::vector<bool> global_mask_bits;
+
+// [[Rcpp::export]]
+DataFrame phenovis_rgb_mean(StringVector images)
+{
+
+  CharacterVector columnNames;
+  columnNames.push_back("r_mean");
+  columnNames.push_back("g_mean");
+  columnNames.push_back("b_mean");
+  columnNames.push_back("decode_time");
+  columnNames.push_back("metric_time");
+
+  NumericMatrix matrix(images.size(), 5);
+
+   // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+   
+    // Load the image and apply mask
+    double decode_time;
+    image_t *image = load_jpeg_image_with_time(std::string(images(i)).c_str(), &decode_time);
+    
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+      std::chrono::_V2::system_clock::time_point start_calc = std::chrono::high_resolution_clock::now();
+
+      double count_pixels = 0;
+      double r_sum = 0;
+      double g_sum = 0;
+      double b_sum = 0;
+      
+    // For every pixel...
+      for (int p = 0; p < image->size; p += 3) {
+
+        rgb RGB = get_rgb_for_pixel_256(p, image);
+        r_sum += RGB.r;
+        g_sum += RGB.g;
+        b_sum += RGB.b;
+        count_pixels += 1;
+
+      }
+       
+      double r_avg = r_sum / (float) count_pixels;
+      double g_avg = g_sum / (float) count_pixels;
+      double b_avg = b_sum / (float) count_pixels;
+
+      std::chrono::_V2::system_clock::time_point end_calc = std::chrono::high_resolution_clock::now();
+      double calc_time = std::chrono::duration_cast<std::chrono::microseconds>(end_calc - start_calc).count();  
+
+      // Push back the image names
+      names.push_back(std::string(images(i)));
+
+      NumericVector row;
+      row.push_back(r_avg);
+      row.push_back(g_avg);
+      row.push_back(b_avg);
+      row.push_back(decode_time);
+      row.push_back(calc_time);
+
+      matrix.row(row_number) = row;
+      row_number++;
+
+      //Free the image data
+      memset(image->image, 0, image->size * sizeof(unsigned char));
+      free(image->image);
+      free(image);
+
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+
+}
+
+
+// [[Rcpp::export]]
+DataFrame phenovis_just_read_images(StringVector images)
+{
+
+  CharacterVector columnNames;
+  columnNames.push_back("time");
+  columnNames.push_back("batch.size");
+  NumericMatrix matrix(1, 2);
+  // names is a vector to keep image names
+  std::vector<std::string> names;
+  
+  //float time = 10.00;
+
+  int i, row_number = 0;
+  std::vector<image_t*> images_vec;
+  std::chrono::_V2::system_clock::time_point start = std::chrono::high_resolution_clock::now();
+  for (i = 0; i < images.size(); i++) {  
+
+    // Load the image and apply mask
+    image_t *image = load_jpeg_image(std::string(images(i)).c_str());
+    int considered_pixels = image->width * image->height;
+
+    images_vec.push_back(image);    
+  }
+  std::chrono::_V2::system_clock::time_point end = std::chrono::high_resolution_clock::now();
+
+  for (i = 0; i < images.size(); i++) { 
+    //Free the image data
+    free(images_vec[i]->image);
+    free(images_vec[i]);
+  }
+
+  //  double time = double(end - start);
+  double time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  printf("time: %f\n", time);
+  
+  NumericVector row;
+  row.push_back(time);
+  row.push_back(double(images.size()));
+  matrix.row(row_number) = row;
+  //row_number++;
+
+  // Push back the old image names
+  names.push_back(std::string(images(0)));
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Head.Image");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+}
+
+
+// [[Rcpp::export]]
+NumericVector phenovis_lab_to_rgb(float L, float A, float B)
+{
+
+  ColorSpace::Lab lab(L, A, B);
+  ColorSpace::Rgb rgb;
+
+  lab.To<ColorSpace::Rgb>(&rgb);
+
+  NumericVector rgb_values;
+  rgb_values.push_back(rgb.r);
+  rgb_values.push_back(rgb.g);
+  rgb_values.push_back(rgb.b);
+
+  //printf("%.2f %.2f %.2f\n", rgb.r, rgb.g, rgb.b);
+  return(rgb_values);
+}
+
+
+// [[Rcpp::export]]
+NumericVector phenovis_rgb_to_lab(float R, float G, float B)
+{
+
+  ColorSpace::Lab lab;
+  ColorSpace::Rgb rgb(R, G, B);
+
+  rgb.To<ColorSpace::Lab>(&lab);
+
+  NumericVector lab_values;
+  lab_values.push_back(lab.l);
+  lab_values.push_back(lab.a);
+  lab_values.push_back(lab.b);
+
+  //printf("%.2f %.2f %.2f\n", lab.l, lab.a, lab.b);
+  
+  return(lab_values);
+}
+
+// [[Rcpp::export]]
+void phenovis_read_mask_bmp(std::string maskname)
+{
+  if (global_mask){
+    free(global_mask->image);
+    free(global_mask);
+    global_mask = NULL;
+  }
+
+  bitmap_image image(maskname.c_str(), 1);
+
+   if (!image)
+   {
+      printf("Error - Failed to open mask.\n");
+      return;
+   }
+
+   const unsigned int height = image.height();
+   const unsigned int width  = image.width();
+   std::vector<bool> mask_bool_vec(height * width, true);
+
+   for (std::size_t y = 0; y < height; ++y)
+   {
+      for (std::size_t x = 0; x < width; ++x)
+      {
+         rgb_t colour;
+
+         image.get_pixel(x, y, colour);
+
+         if (colour.red == 0 && colour.green == 0 && colour.blue == 0)
+	   mask_bool_vec[x*y] = false;
+
+      }
+   }
+
+   //return 0;   
+   //global_mask = load_jpeg_image(maskname.c_str());
+   global_mask_bits = mask_bool_vec;
+}
+
 
 // [[Rcpp::export]]
 DataFrame phenovis_apply_mask_for_paper(
@@ -94,14 +319,15 @@ DataFrame phenovis_adjust_rgb(
 {
 
   CharacterVector columnNames;
-  columnNames.push_back("r_mean");
-  columnNames.push_back("g_mean");
-  columnNames.push_back("b_mean");
-  columnNames.push_back("orig_r_mean");
-  columnNames.push_back("orig_g_mean");
-  columnNames.push_back("orig_b_mean");
+  columnNames.push_back("new.r_mean");
+  columnNames.push_back("new.g_mean");
+  columnNames.push_back("new.b_mean");
+  columnNames.push_back("new.Gcc");
+  //  columnNames.push_back("orig_r_mean");
+  //  columnNames.push_back("orig_g_mean");
+  //  columnNames.push_back("orig_b_mean");
 
-  NumericMatrix matrix(images.size(), 6);
+  NumericMatrix matrix(images.size(), 4);
 
   // names is a vector to keep image names
   std::vector<std::string> names;
@@ -111,6 +337,13 @@ DataFrame phenovis_adjust_rgb(
 
   int i, row_number = 0;
   for (i = 0; i < images.size(); i++) {
+
+    /*    if(i % 100 == 0){
+      pid_t pid = getpid();
+      //printf("pid: %lun", pid);
+      printf("%d: %.2f\n", pid , (float)i/images.size() * 100);
+      }*/
+	
     // Load the image and apply mask
     image_t *image = load_jpeg_image(std::string(images(i)).c_str());
     int considered_pixels = image->width * image->height;
@@ -122,7 +355,7 @@ DataFrame phenovis_adjust_rgb(
     std::vector<rgb> image_adj;
 
     // Vector to save orig pixels
-    std::vector<rgb> image_orig;
+    // std::vector<rgb> image_orig;
 
     // For every pixel...
       for (int p = 0; p < image->size; p += 3) {
@@ -148,7 +381,7 @@ DataFrame phenovis_adjust_rgb(
           // Save pixel
           image_adj.push_back(adj_rgb);
           // Save orig pixel
-          image_orig.push_back(RGB);
+          // image_orig.push_back(RGB);
 
           set_rgb_for_pixel(adj_rgb.r, adj_rgb.g, adj_rgb.b, p, image);
 
@@ -181,7 +414,9 @@ DataFrame phenovis_adjust_rgb(
       double r_avg = r_sum / i_rgb_pixels;
       double g_avg = g_sum / i_rgb_pixels;
       double b_avg = b_sum / i_rgb_pixels;
-
+      double image_gcc = g_avg / (r_avg + g_avg + b_avg);
+      
+      /*
       // Calculate stats
       double orig_r_sum = 0, orig_g_sum = 0, orig_b_sum = 0;
       int orig_i_rgb_pixels = 0;
@@ -194,14 +429,16 @@ DataFrame phenovis_adjust_rgb(
       double orig_r_avg = orig_r_sum / orig_i_rgb_pixels;
       double orig_g_avg = orig_g_sum / orig_i_rgb_pixels;
       double orig_b_avg = orig_b_sum / orig_i_rgb_pixels;
+      */
       
       NumericVector row;
       row.push_back(r_avg);
       row.push_back(g_avg);
       row.push_back(b_avg);
-      row.push_back(orig_r_avg);
-      row.push_back(orig_g_avg);
-      row.push_back(orig_b_avg);
+      row.push_back(image_gcc);
+      //      row.push_back(orig_r_avg);
+      //      row.push_back(orig_g_avg);
+      //      row.push_back(orig_b_avg);
 
       matrix.row(row_number) = row;
       row_number++;
@@ -234,11 +471,15 @@ DataFrame phenovis_adjust_lab(
 {
 
   CharacterVector columnNames;
-  columnNames.push_back("L_mean");
-  columnNames.push_back("A_mean");
-  columnNames.push_back("B_mean");
+  columnNames.push_back("new.L_mean");
+  columnNames.push_back("new.A_mean");
+  columnNames.push_back("new.B_mean");
+  columnNames.push_back("new.r_mean");
+  columnNames.push_back("new.g_mean");
+  columnNames.push_back("new.b_mean");
+  columnNames.push_back("new.Gcc");
 
-  NumericMatrix matrix(images.size(), 3);
+  NumericMatrix matrix(images.size(), 7);
 
   // names is a vector to keep image names
   std::vector<std::string> names;
@@ -248,6 +489,13 @@ DataFrame phenovis_adjust_lab(
 
   int i, row_number = 0;
   for (i = 0; i < images.size(); i++) {
+
+    /*    if(i % 100 == 0){
+      pid_t pid = getpid();
+      //printf("pid: %lun", pid);
+      printf("%d: %.2f\n", pid , (float)i/images.size() * 100);
+      }*/
+    
     // Load the image and apply mask
     image_t *image = load_jpeg_image(std::string(images(i)).c_str());
     int considered_pixels = image->width * image->height;
@@ -257,6 +505,9 @@ DataFrame phenovis_adjust_lab(
 
     // Vector to save LAB pixels
     std::vector<ColorSpace::Lab> image_in_lab;
+
+    // Vector to save RGB pixels
+    std::vector<ColorSpace::Rgb> image_in_rgb;
 
     // For every pixel...
       for (int p = 0; p < image->size; p += 3) {
@@ -273,11 +524,11 @@ DataFrame phenovis_adjust_lab(
           lab.a = lab.a + a_diff[i];
           lab.b = lab.b + b_diff[i];
 
-          // Check values less than 0
+          // Check values less than 0 or -100
           lab.l < 0 ? lab.l = 0 : lab.l = lab.l;
           lab.a < -100 ? lab.a = -100 : lab.a = lab.a;
           lab.b < -100 ? lab.b = -100 : lab.b = lab.b;
-          // Check values greater than 255
+          // Check values greater than 100
           lab.l > 100 ? lab.l = 100 : lab.l = lab.l;
           lab.a > 100 ? lab.a = 100 : lab.a = lab.a;
           lab.b > 100 ? lab.b = 100 : lab.b = lab.b;
@@ -287,8 +538,11 @@ DataFrame phenovis_adjust_lab(
 
           // Get back to RGB
           ColorSpace::Lab adjusted_lab(lab.l, lab.a, lab.b);
-         ColorSpace::Rgb adjusted_rgb;
-         adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
+          ColorSpace::Rgb adjusted_rgb;
+          adjusted_lab.To<ColorSpace::Rgb>(&adjusted_rgb);
+
+	  // Save new RGB pixel
+	  image_in_rgb.push_back(adjusted_rgb);
 
           set_rgb_for_pixel(adjusted_rgb.r, adjusted_rgb.g, adjusted_rgb.b, p, image);
 
@@ -311,22 +565,38 @@ DataFrame phenovis_adjust_lab(
 
       // Calculate stats
       double L_sum = 0, A_sum = 0, B_sum = 0;
+      double r_sum = 0, g_sum = 0, b_sum = 0;
       int i_lab_pixels = 0;
       for(auto lab_pixel : image_in_lab){
         L_sum += lab_pixel.l;
         A_sum += lab_pixel.a;
         B_sum += lab_pixel.b;
-        i_lab_pixels += 1;
+
+        r_sum += image_in_rgb[i_lab_pixels].r;
+        g_sum += image_in_rgb[i_lab_pixels].g;
+        b_sum += image_in_rgb[i_lab_pixels].b;
+	
+	i_lab_pixels += 1;
       }
       double L_avg = L_sum / i_lab_pixels;
       double A_avg = A_sum / i_lab_pixels;
       double B_avg = B_sum / i_lab_pixels;
-      
+
+      double r_avg = r_sum / i_lab_pixels;
+      double g_avg = g_sum / i_lab_pixels;
+      double b_avg = b_sum / i_lab_pixels;
+      double image_gcc = g_avg / (r_avg + g_avg + b_avg);
+
       NumericVector row;
       row.push_back(L_avg);
       row.push_back(A_avg);
       row.push_back(B_avg);
-
+      row.push_back(r_avg);
+      row.push_back(g_avg);
+      row.push_back(b_avg);
+      row.push_back(image_gcc);
+      
+      
       matrix.row(row_number) = row;
       row_number++;
 
@@ -495,6 +765,13 @@ DataFrame phenovis_lab_stats(StringVector images)
 
   int i, row_number = 0;
   for (i = 0; i < images.size(); i++) {
+
+    /* if(i % 100 == 0){
+      pid_t pid = getpid();
+      //printf("pid: %lun", pid);
+      printf("%d: %.2f\n", pid , (float)i/images.size() * 100);
+      }*/
+    
     // Load the image and apply mask
     image_t *image = load_jpeg_image(std::string(images(i)).c_str());
     int considered_pixels = image->width * image->height;
