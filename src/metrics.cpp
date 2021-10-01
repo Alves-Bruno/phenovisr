@@ -4,6 +4,16 @@ int is_black (rgb RGB) {
   return !(RGB.r + RGB.g + RGB.b);
 }
 
+rgb get_rgb_for_pixel_256(int pixel, image_t *image) {
+  unsigned char *iimage = image->image;
+  unsigned char r = iimage[pixel];
+  unsigned char g = iimage[pixel + 1];
+  unsigned char b = iimage[pixel + 2];
+
+  rgb RGB = {(double)r, (double)g, (double)b};
+  return RGB;
+}
+
 rgb get_rgb_for_pixel(int pixel, image_t *image) {
   unsigned char *iimage = image->image;
   unsigned char r = iimage[pixel];

@@ -1,5 +1,59 @@
 #include "jpeg_image.h"
 
+image_t *load_jpeg_image_with_time(
+				   const char *filename, double *decode_time)
+{
+
+  std::chrono::_V2::system_clock::time_point start_decode = std::chrono::high_resolution_clock::now();
+
+  FILE *file = fopen(filename, "rb");  //open the file
+  if(!file) {
+     return NULL;
+  }
+
+  image_t *image;        // data for the image
+  
+  struct jpeg_decompress_struct info; //for our jpeg info
+  struct jpeg_error_mgr err;          //the error handler
+
+  info.err = jpeg_std_error(&err);
+  jpeg_create_decompress(&info);   //fills info structure
+
+  jpeg_stdio_src(&info, file);
+  
+  jpeg_read_header(&info, TRUE);   // read jpeg file header
+  jpeg_start_decompress(&info);    // decompress the file
+
+  image = (image_t*)malloc(sizeof(image_t));
+  image->width = info.output_width;
+  image->height = info.output_height;
+  image->channels = info.num_components;
+
+  // std::cout << "Filename: " << filename << std::endl;
+  // std::cout << "Width: " << image->width << std::endl;
+  // std::cout << "Height: " << image->height << std::endl;
+  // std::cout << "Channels: " << image->channels << std::endl;
+
+  image->size = image->width * image->height * image->channels;
+  image->image = (unsigned char *)malloc(image->size);
+  
+  while (info.output_scanline < info.output_height){
+    unsigned char *rowptr = &image->image[info.output_scanline * image->width * image->channels];
+    jpeg_read_scanlines(&info, &rowptr, 1);
+  }
+  jpeg_finish_decompress(&info);   //finish decompressing
+  jpeg_destroy_decompress(&info);
+  fclose(file);
+
+  std::chrono::_V2::system_clock::time_point end_decode = std::chrono::high_resolution_clock::now();
+
+  *decode_time = std::chrono::duration_cast<std::chrono::microseconds>(end_decode - start_decode).count();
+  
+  return image; /* should be freed */
+
+  
+}
+
 image_t *load_jpeg_image (const char *filename)
 {
   image_t *image;        // data for the image

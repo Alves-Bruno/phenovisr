@@ -5,11 +5,95 @@
 #include <string>
 #include "jpeg_image.h"
 #include "metrics_extraction.h"
+#include <chrono>
 
 using namespace Rcpp;
 
 static image_t *global_mask = NULL;
 static image_t **globalMasks = NULL;
+
+// [[Rcpp::export]]
+DataFrame phenovis_rgb_mean(StringVector images)
+{
+
+  CharacterVector columnNames;
+  columnNames.push_back("r_mean");
+  columnNames.push_back("g_mean");
+  columnNames.push_back("b_mean");
+  columnNames.push_back("decode_time");
+  columnNames.push_back("metric_time");
+
+  NumericMatrix matrix(images.size(), 5);
+
+   // names is a vector to keep image names
+  std::vector<std::string> names;
+
+  int i, row_number = 0;
+  for (i = 0; i < images.size(); i++) {
+   
+    // Load the image and apply mask
+    double decode_time;
+    image_t *image = load_jpeg_image_with_time(std::string(images(i)).c_str(), &decode_time);
+    
+    int considered_pixels = image->width * image->height;
+    if (global_mask) {
+      considered_pixels = apply_mask(image, global_mask);
+    }
+
+      std::chrono::_V2::system_clock::time_point start_calc = std::chrono::high_resolution_clock::now();
+
+      double count_pixels = 0;
+      double r_sum = 0;
+      double g_sum = 0;
+      double b_sum = 0;
+      
+    // For every pixel...
+      for (int p = 0; p < image->size; p += 3) {
+
+        rgb RGB = get_rgb_for_pixel_256(p, image);
+        r_sum += RGB.r;
+        g_sum += RGB.g;
+        b_sum += RGB.b;
+        count_pixels += 1;
+
+      }
+       
+      double r_avg = r_sum / (float) count_pixels;
+      double g_avg = g_sum / (float) count_pixels;
+      double b_avg = b_sum / (float) count_pixels;
+
+      std::chrono::_V2::system_clock::time_point end_calc = std::chrono::high_resolution_clock::now();
+      double calc_time = std::chrono::duration_cast<std::chrono::microseconds>(end_calc - start_calc).count();  
+
+      // Push back the image names
+      names.push_back(std::string(images(i)));
+
+      NumericVector row;
+      row.push_back(r_avg);
+      row.push_back(g_avg);
+      row.push_back(b_avg);
+      row.push_back(decode_time);
+      row.push_back(calc_time);
+
+      matrix.row(row_number) = row;
+      row_number++;
+
+      //Free the image data
+      memset(image->image, 0, image->size * sizeof(unsigned char));
+      free(image->image);
+      free(image);
+
+  }
+
+  // Create the resulting data frame
+  DataFrame ret(matrix);
+  ret.insert(ret.begin(), names);
+  columnNames.push_front("Picture.Path");
+  ret.attr("names") = columnNames;
+  Function asDF("as.data.frame");
+  return asDF(ret);
+
+}
 
 // [[Rcpp::export]]
 void phenovis_read_mask(std::string maskname)
