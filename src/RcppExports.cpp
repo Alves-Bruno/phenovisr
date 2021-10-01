@@ -5,6 +5,22 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
+// phenovis_rgb_mean
+DataFrame phenovis_rgb_mean(StringVector images);
+RcppExport SEXP _phenovisr_phenovis_rgb_mean(SEXP imagesSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< StringVector >::type images(imagesSEXP);
+    rcpp_result_gen = Rcpp::wrap(phenovis_rgb_mean(images));
+    return rcpp_result_gen;
+END_RCPP
+}
 // phenovis_read_mask
 void phenovis_read_mask(std::string maskname);
 RcppExport SEXP _phenovisr_phenovis_read_mask(SEXP masknameSEXP) {
@@ -61,6 +77,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_phenovisr_phenovis_rgb_mean", (DL_FUNC) &_phenovisr_phenovis_rgb_mean, 1},
     {"_phenovisr_phenovis_read_mask", (DL_FUNC) &_phenovisr_phenovis_read_mask, 1},
     {"_phenovisr_phenovis_read_masks", (DL_FUNC) &_phenovisr_phenovis_read_masks, 1},
     {"_phenovisr_phenovis_get_mean_gcc", (DL_FUNC) &_phenovisr_phenovis_get_mean_gcc, 1},

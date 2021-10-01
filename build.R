@@ -2,4 +2,4 @@
 system("make clean")
 library(Rcpp)
 compileAttributes(".")
-system("R CMD INSTALL .")
+#system("R CMD INSTALL .")
