@@ -40,7 +40,7 @@ DataFrame phenovis_rgb_mean(StringVector images)
       considered_pixels = apply_mask(image, global_mask);
     }
 
-      std::chrono::_V2::system_clock::time_point start_calc = std::chrono::high_resolution_clock::now();
+      auto start_calc = std::chrono::high_resolution_clock::now();
 
       double count_pixels = 0;
       double r_sum = 0;
@@ -62,7 +62,7 @@ DataFrame phenovis_rgb_mean(StringVector images)
       double g_avg = g_sum / (float) count_pixels;
       double b_avg = b_sum / (float) count_pixels;
 
-      std::chrono::_V2::system_clock::time_point end_calc = std::chrono::high_resolution_clock::now();
+      auto end_calc = std::chrono::high_resolution_clock::now();
       double calc_time = std::chrono::duration_cast<std::chrono::microseconds>(end_calc - start_calc).count();  
 
       // Push back the image names

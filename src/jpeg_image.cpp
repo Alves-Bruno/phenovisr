@@ -4,7 +4,7 @@ image_t *load_jpeg_image_with_time(
 				   const char *filename, double *decode_time)
 {
 
-  std::chrono::_V2::system_clock::time_point start_decode = std::chrono::high_resolution_clock::now();
+  auto start_decode = std::chrono::high_resolution_clock::now();
 
   FILE *file = fopen(filename, "rb");  //open the file
   if(!file) {
@@ -45,7 +45,7 @@ image_t *load_jpeg_image_with_time(
   jpeg_destroy_decompress(&info);
   fclose(file);
 
-  std::chrono::_V2::system_clock::time_point end_decode = std::chrono::high_resolution_clock::now();
+  auto end_decode = std::chrono::high_resolution_clock::now();
 
   *decode_time = std::chrono::duration_cast<std::chrono::microseconds>(end_decode - start_decode).count();
   
